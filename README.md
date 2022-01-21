@@ -19,7 +19,7 @@ IEEE Robotics and Automation Letters (2021).
 ```
 Video: [aSLIP walking on rough terrain](https://www.youtube.com/watch?v=fUZu6y-Gu4g).
 
-TO-DO: Many dependencies to be added.
+TO-DO: Many dependencies to be added; needs more clean-up
 
 
  
