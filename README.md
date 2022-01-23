@@ -1,6 +1,6 @@
 # BBF-QP-on-SLIP
 
-Matlab implementation of the [Paper](https://arxiv.org/pdf/2102.09691.pdf):
+Unorganized Matlab implementation of the [Paper](https://arxiv.org/pdf/2102.09691.pdf):
 ```
 Xiaobin Xiong and Aaron Ames. 
 SLIP Walking over Rough Terrain via H-LIP Stepping and Backstepping-Barrier Function Inspired Quadratic Program
@@ -19,6 +19,7 @@ IEEE Robotics and Automation Letters (2021).
 ```
 Video: [aSLIP walking on rough terrain](https://www.youtube.com/watch?v=fUZu6y-Gu4g).
 
+Uploaded due to request. 
 TO-DO: Many dependencies to be added; needs more clean-up
 
 
