@@ -12,7 +12,7 @@ addpath('Third')
 %% flat
 test = backSteppingWalking('human');
 % test.genDesiredbehaviorFlat;
-test.genDesiredbehaviorUnexpDownstep(0.05);
+test.genDesiredbehaviorUnexpDownstep(0.10);
 % test.genDesiredbehaviorExpDownstep(0.01);
 
 % add LIP model

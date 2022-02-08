@@ -157,6 +157,13 @@ for ph = 1:length(phs)
         end
         bvFits.exp.(phs{ph}).zcom{ii} = polyfit(downsteps(1:5),bv_param,1);
     end
+    for ii = 1:length(ab.exp00.(phs{ph}).bv_dzcom) % num of Bezier parameters
+        bv_dparam = [];
+        for exp = [1 2 3 4 5] % [1 2 3 4 5]
+            bv_dparam = [bv_dparam ab.(exps{exp}).(phs{ph}).bv_dzcom(ii)];
+        end
+        bvFits.exp.(phs{ph}).dzcom{ii} = polyfit(downsteps(1:5),bv_dparam,1);
+    end
     
     % unexpected
     for ii = 1:length(ab.exp00.(phs{ph}).bv_zcom) % num of Bezier parameters
@@ -165,6 +172,13 @@ for ph = 1:length(phs)
             bv_param = [bv_param ab.(exps{exp}).(phs{ph}).bv_zcom(ii)];
         end
         bvFits.unexp.(phs{ph}).zcom{ii} = polyfit(downsteps(1:5),bv_param,1);
+    end
+    for ii = 1:length(ab.exp00.(phs{ph}).bv_dzcom) % num of Bezier parameters
+        bv_dparam = [];
+        for exp = [1 2 3 4 5] % [1 2 3 4 5]
+            bv_dparam = [bv_dparam ab.(exps{exp}).(phs{ph}).bv_dzcom(ii)];
+        end
+        bvFits.unexp.(phs{ph}).dzcom{ii} = polyfit(downsteps(1:5),bv_dparam,1);
     end
 end
 

@@ -24,12 +24,9 @@ save('data/beziersRaw/allDataCassie.mat','allData')
 %%% get beziers
 allBeziersHuman = struct;
 allBeziersCassie = struct;
-figure(202); hold on; grid on;
-figure(303); hold on; grid on;
-figure(404); hold on; grid on;
 
-    allBeziersHuman = fitHumanDataToBezier(allDataHuman,allBeziersHuman);
-    allBeziersCassie = fitHumanDataToBezier(allDataCassie,allBeziersCassie);
+    allBeziersHuman = fitDataToBezier(allDataHuman,allBeziersHuman);
+    allBeziersCassie = fitDataToBezier(allDataCassie,allBeziersCassie);
 
 allBeziers = allBeziersHuman;
 save('data/beziersRaw/allBeziersHuman.mat','allBeziers')
@@ -38,102 +35,193 @@ save('data/beziersRaw/allBeziersCassie.mat','allBeziers')
 
 
 %% FUNCTIONS
-function allBeziersHuman = fitHumanDataToBezier(allDataHuman,allBeziersHuman)
+function allBeziers = fitDataToBezier(allData,allBeziers)
 filename = strcat('data/human/timeEvents.mat');
 load(filename)
 
-fns = fieldnames(allDataHuman);
-for i = 1:length(fns) % exp00, exp25, exp50, ...
-    fns2 = fieldnames(allDataHuman.(fns{i}));
-    for ii = 1:length(fns2) % phase1, phase2, phase3
-        time = allDataHuman.(fns{i}).(fns2{ii}).time;
-        time_SSP = allDataHuman.(fns{i}).(fns2{ii}).time_SSP;
-        time_norm = allDataHuman.(fns{i}).(fns2{ii}).time_norm;
-        time_norm_SSP = allDataHuman.(fns{i}).(fns2{ii}).time_norm_SSP;
+fns = fieldnames(allData);
+for fn = 1:length(fns) % exp00, exp25, exp50, ...
+    phs = fieldnames(allData.(fns{fn}));
+    for ph = 1:length(phs) % phase1, phase2, phase3
+        time = allData.(fns{fn}).(phs{ph}).time;
+        time_SSP = allData.(fns{fn}).(phs{ph}).time_SSP;
+        time_norm = allData.(fns{fn}).(phs{ph}).time_norm;
+        time_norm_SSP = allData.(fns{fn}).(phs{ph}).time_norm_SSP;
         
-        zcom = allDataHuman.(fns{i}).(fns2{ii}).zcom;
-        dzcom = allDataHuman.(fns{i}).(fns2{ii}).dzcom;
-        ddzcom = allDataHuman.(fns{i}).(fns2{ii}).ddzcom;
+        zcom = allData.(fns{fn}).(phs{ph}).zcom;
+        dzcom = allData.(fns{fn}).(phs{ph}).dzcom;
+        ddzcom = allData.(fns{fn}).(phs{ph}).ddzcom;
         
-        xcom = allDataHuman.(fns{i}).(fns2{ii}).xcom;
-        dxcom = allDataHuman.(fns{i}).(fns2{ii}).dxcom;
-        ddxcom = allDataHuman.(fns{i}).(fns2{ii}).ddxcom;
+        xcom = allData.(fns{fn}).(phs{ph}).xcom;
+        dxcom = allData.(fns{fn}).(phs{ph}).dxcom;
+        ddxcom = allData.(fns{fn}).(phs{ph}).ddxcom;
 
         %%%%%%%%%%%%%
-        % ZCOM
-        mid = round(length(zcom)/2);
-        
-        if ii == 1
-            z0 = 0.89;
-            bv0 = [zcom(1) zcom(1) zcom(end) zcom(end)];
-            fun = @(x) costFcnBezierCustom(x,time_norm,zcom,[z0 z0],[]);
-            bv_zcom = fmincon(fun,bv0,[],[],[],[])
-            bv_zcom = [z0 z0 bv_zcom];
+        % ZCOM        
+        if ph == 1
+            zmax = max(allData.exp00.('phase1').zcom);
             
-            tMax = timeEvents.(fns{i}).(fns2{ii}).timeMax;  
-            figure(202); 
-            subplot(1,2,1); hold on; grid on;
-            plot(linspace(0,tMax,100),bezier2(bv_zcom,linspace(0,1,100)))
-            subplot(1,2,2); hold on; grid on;
-            plot(time,zcom)
-        elseif ii == 3
-            z0 = 0.89;
-            bv0 = [zcom(end)];
-            fun = @(x) costFcnBezierCustom(x,time_norm,zcom,[zcom(1)],[z0 z0]);
-            bv_zcom = fmincon(fun,bv0,[],[],[],[])
-            bv_zcom = [zcom(1) bv_zcom z0 z0];
+            zcom1 = zcom;
+            zcom2 = allData.(fns{fn}).('phase2').zcom;
+            zcom3 = allData.(fns{fn}).('phase3').zcom;
+            time_norm1 = time_norm;
+            time_norm2 = allData.(fns{fn}).('phase2').time_norm;
+            time_norm3 = allData.(fns{fn}).('phase3').time_norm;
+            time_human1 = time;
+            time_human2 = allData.(fns{fn}).('phase2').time;
+            time_human3 = allData.(fns{fn}).('phase3').time;
             
-            tMax = timeEvents.(fns{i}).(fns2{ii}).timeMax;  
-            figure(303); 
-            subplot(1,2,1); hold on; grid on;
-            plot(linspace(0,tMax,100),bezier2(bv_zcom,linspace(0,1,100)))
-            subplot(1,2,2); hold on; grid on;
-            plot(time,zcom)
-        else
-            bv0 = [zcom(1) zcom(1) zcom(end)];
-            fun = @(x) costFcnBezierCustom(x,time_norm,zcom,[zcom(1)],[zcom(end)]);
-            bv_zcom = fmincon(fun,bv0,[],[],[],[])
-            bv_zcom = [zcom(1) bv_zcom zcom(end)];
+            bv0 = [zcom1(1) zcom1(1) zcom1(round(end/2)) zcom1(end) zcom1(end) zcom1(end) ...
+                   zcom2(1) zcom2(1) zcom2(round(end/2)) zcom2(end) zcom2(end) zcom2(end) ...
+                   zcom3(1) zcom3(1) zcom3(round(end/2)) zcom3(end) zcom3(end) zcom3(end)];
+            fun = @(x) costFcnBezierZ(x,time_norm1,time_norm2,time_norm3,...
+                                        zcom1,zcom2,zcom3,...
+                                        6,6,6);
+            Aeq = [1 -1 0 0 0 0 zeros(1,12);
+                   zeros(1,12) 0 0 0 0 1 -1;
+                   0 0 0 0 0 1 -1 0 0 0 0 0 zeros(1,6);
+                   zeros(1,6) 0 0 0 0 0 1 -1 0 0 0 0 0;
+                   1 0 0 0 0 0 zeros(1,12);
+                   zeros(1,12) 0 0 0 0 0 1];
+            beq = [zeros(4,1);
+                   zmax;
+                   zmax];
+            Aneq = [];
+            bneq = [];
             
-            tMax = timeEvents.(fns{i}).(fns2{ii}).timeMax;  
-            figure(404); 
-            subplot(1,2,1); hold on; grid on;
-            plot(linspace(0,tMax,100),bezier2(bv_zcom,linspace(0,1,100)))
-            subplot(1,2,2); hold on; grid on;
-            plot(time,zcom)
+            n1 = length(time_human1);
+            n2 = length(time_human2);
+            n3 = length(time_human3);
+            nlcon = @(bv) deal([],[bezier2(bv(1:6),1,1)/n1 - bezier2(bv(7:12),0,1)/n2;
+                                   bezier2(bv(7:12),1,1)/n2 - bezier2(bv(13:18),0,1)/n3]);
+            bv_zcom_all = fmincon(fun,bv0,Aneq,bneq,Aeq,beq,[],[],nlcon);
+            
+            bv_zcom_phase1 = bv_zcom_all(1:6);
+            bv_zcom_phase2 = bv_zcom_all(7:12);
+            bv_zcom_phase3 = bv_zcom_all(13:18);
+            
+            teval = 0:0.01:1;
+            figure; 
+            subplot(2,3,1); hold on; grid on;
+            plot(teval,bezier2(bv_zcom_phase1,teval))
+            plot(linspace(0,1,length(zcom1)),zcom1)
+            subplot(2,3,2); hold on; grid on;
+            plot(teval,bezier2(bv_zcom_phase2,teval))
+            plot(linspace(0,1,length(zcom2)),zcom2)
+            subplot(2,3,3); hold on; grid on;
+            plot(teval,bezier2(bv_zcom_phase3,teval))
+            plot(linspace(0,1,length(zcom3)),zcom3)
+            legend('bezier','raw')
+            
+            subplot(2,3,[4 5 6]); hold on; grid on;
+            plot(time_human1,bezier2(bv_zcom_phase1,time_norm1))
+            plot(time_human1,zcom1)
+            plot(time_human2+time_human1(end),bezier2(bv_zcom_phase2,time_norm2))
+            plot(time_human2+time_human1(end),zcom2)
+            plot(time_human3+time_human1(end)+time_human2(end),bezier2(bv_zcom_phase3,time_norm3))
+            plot(time_human3+time_human1(end)+time_human2(end),zcom3)
+            legend('bezier','raw')
+            linkaxes
+            
+            allBeziers.(fns{fn}).('phase1').bv_zcom = bv_zcom_phase1;
+            allBeziers.(fns{fn}).('phase2').bv_zcom = bv_zcom_phase2;
+            allBeziers.(fns{fn}).('phase3').bv_zcom = bv_zcom_phase3;
         end
         
-        bv0 = [dzcom(1) dzcom(1) dzcom(mid) dzcom(end) dzcom(end)];
-        fun = @(x) costFcnBezier(x,time_norm,dzcom);
-        bv_dzcom = fmincon(fun,bv0,[],[],[],[])
+        if ph == 1
+            n = 5;
+            dzcom1 = dzcom;
+            dzcom2 = allData.(fns{fn}).('phase2').dzcom;
+            dzcom3 = allData.(fns{fn}).('phase3').dzcom;
+            time_norm1 = time_norm;
+            time_norm2 = allData.(fns{fn}).('phase2').time_norm;
+            time_norm3 = allData.(fns{fn}).('phase3').time_norm;
+            time_human1 = time;
+            time_human2 = allData.(fns{fn}).('phase2').time;
+            time_human3 = allData.(fns{fn}).('phase3').time;
+            
+            bv0 = [dzcom1(1) dzcom1(1) dzcom1(round(end/2)) dzcom1(end) dzcom1(end) ...
+                   dzcom2(1) dzcom2(1) dzcom2(round(end/2)) dzcom2(end) dzcom2(end) ...
+                   dzcom3(1) dzcom3(1) dzcom3(round(end/2)) dzcom3(end) dzcom3(end)];
+            fun = @(x) costFcnBezierZ(x,time_norm1,time_norm2,time_norm3,...
+                                        dzcom1,dzcom2,dzcom3,...
+                                        n,n,n);
+            Aeq = [0 0 0 0 1 -1 0 0 0 0 zeros(1,n);
+                   zeros(1,n) 0 0 0 0 1 -1 0 0 0 0;
+                   1 0 0 0 0 zeros(1,2*n);
+                   zeros(1,2*n) 0 0 0 0 1];
+            beq = [zeros(2,1);
+                   0;
+                   0];
+            Aneq = [];
+            bneq = [];
+            
+            n1 = length(time_human1);
+            n2 = length(time_human2);
+            n3 = length(time_human3);
+            nlcon = @(bv) deal([],[bezier2(bv(1:n),1,1)/n1 - bezier2(bv(n+1:2*n),0,1)/n2;
+                                   bezier2(bv(n+1:2*n),1,1)/n2 - bezier2(bv(2*n+1:3*n),0,1)/n3]);
+            bv_dzcom_all = fmincon(fun,bv0,Aneq,bneq,Aeq,beq,[],[],nlcon);
+            
+            bv_dzcom_phase1 = bv_dzcom_all(1:n);
+            bv_dzcom_phase2 = bv_dzcom_all(n+1:2*n);
+            bv_dzcom_phase3 = bv_dzcom_all(2*n+1:3*n);
+            
+            teval = 0:0.01:1;
+            figure; 
+            subplot(2,3,1); hold on; grid on;
+            plot(teval,bezier2(bv_dzcom_phase1,teval))
+            plot(linspace(0,1,length(zcom1)),dzcom1)
+            subplot(2,3,2); hold on; grid on;
+            plot(teval,bezier2(bv_dzcom_phase2,teval))
+            plot(linspace(0,1,length(zcom2)),dzcom2)
+            subplot(2,3,3); hold on; grid on;
+            plot(teval,bezier2(bv_dzcom_phase3,teval))
+            plot(linspace(0,1,length(zcom3)),dzcom3)
+            legend('bezier','raw')
+            
+            subplot(2,3,[4 5 6]); hold on; grid on;
+            plot(time_human1,bezier2(bv_dzcom_phase1,time_norm1))
+            plot(time_human1,dzcom1)
+            plot(time_human2+time_human1(end),bezier2(bv_dzcom_phase2,time_norm2))
+            plot(time_human2+time_human1(end),dzcom2)
+            plot(time_human3+time_human1(end)+time_human2(end),bezier2(bv_dzcom_phase3,time_norm3))
+            plot(time_human3+time_human1(end)+time_human2(end),dzcom3)
+            legend('bezier','raw')
+            linkaxes
+            
+            allBeziers.(fns{fn}).('phase1').bv_dzcom = bv_dzcom_phase1;
+            allBeziers.(fns{fn}).('phase2').bv_dzcom = bv_dzcom_phase2;
+            allBeziers.(fns{fn}).('phase3').bv_dzcom = bv_dzcom_phase3;
+        end
 
-        bv0 = [ddzcom(1) ddzcom(1) ddzcom(mid) ddzcom(end) ddzcom(end)];
+        bv0 = [ddzcom(1) ddzcom(1) ddzcom(round(end/2)) ddzcom(end) ddzcom(end)];
         fun = @(x) costFcnBezier(x,time_norm,ddzcom);
         bv_ddzcom = fmincon(fun,bv0,[],[],[],[])
 
         %%%%%%%%%%%%%
         % XCOM
-        bv0 = [xcom(1) xcom(1) xcom(mid) xcom(end) xcom(end)];
+        bv0 = [xcom(1) xcom(1) xcom(round(end/2)) xcom(end) xcom(end)];
         fun = @(x) costFcnBezier(x,time_norm,xcom);
         bv_xcom = fmincon(fun,bv0,[],[],[],[])
 
-        bv0 = [dxcom(1) dxcom(1) dxcom(mid) dxcom(end) dxcom(end)];
+        bv0 = [dxcom(1) dxcom(1) dxcom(round(end/2)) dxcom(end) dxcom(end)];
         fun = @(x) costFcnBezier(x,time_norm,dxcom);
         bv_dxcom = fmincon(fun,bv0,[],[],[],[])
 
-        bv0 = [ddxcom(1) ddxcom(1) ddxcom(mid) ddxcom(end) ddxcom(end)];
+        bv0 = [ddxcom(1) ddxcom(1) ddxcom(round(end/2)) ddxcom(end) ddxcom(end)];
         fun = @(x) costFcnBezier(x,time_norm,ddxcom);
         bv_ddxcom = fmincon(fun,bv0,[],[],[],[])
         
         % to struct
-        allBeziersHuman.(fns{i}).(fns2{ii}).bv_zcom = bv_zcom;
-        allBeziersHuman.(fns{i}).(fns2{ii}).bv_dzcom = bv_dzcom;
-        allBeziersHuman.(fns{i}).(fns2{ii}).bv_ddzcom = bv_ddzcom;
-        allBeziersHuman.(fns{i}).(fns2{ii}).bv_xcom = bv_xcom;
-        allBeziersHuman.(fns{i}).(fns2{ii}).bv_dxcom = bv_dxcom;
-        allBeziersHuman.(fns{i}).(fns2{ii}).bv_ddxcom = bv_ddxcom;
-        allBeziersHuman.(fns{i}).(fns2{ii}).timeMax = time(end);
-        allBeziersHuman.(fns{i}).(fns2{ii}).timeMax_SSP = time_SSP(end);
+%         allBeziersHuman.(fns{fn}).(phs{ph}).bv_zcom = bv_zcom;
+%         allBeziers.(fns{fn}).(phs{ph}).bv_dzcom = bv_dzcom;
+        allBeziers.(fns{fn}).(phs{ph}).bv_ddzcom = bv_ddzcom;
+        allBeziers.(fns{fn}).(phs{ph}).bv_xcom = bv_xcom;
+        allBeziers.(fns{fn}).(phs{ph}).bv_dxcom = bv_dxcom;
+        allBeziers.(fns{fn}).(phs{ph}).bv_ddxcom = bv_ddxcom;
+        allBeziers.(fns{fn}).(phs{ph}).timeMax = time(end);
+        allBeziers.(fns{fn}).(phs{ph}).timeMax_SSP = time_SSP(end);
     end
 end
 end
