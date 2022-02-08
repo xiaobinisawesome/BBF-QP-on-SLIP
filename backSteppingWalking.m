@@ -47,6 +47,7 @@ classdef backSteppingWalking < handle
         downstepStep = 0;
         downstepTime = 0.0;
         downstepDuration = 0.0;
+        downstepHeight = 0.0;
         downstepHeightOffset = 0.0;
         VLOtime = 0.0;
         bv_SSP2 = struct();     % just for Fdes and dFdes of SSP2
@@ -75,6 +76,7 @@ classdef backSteppingWalking < handle
         zdesBezier = [];      % desired zcom
         dzdesBezier = [];
         ddzdesBezier = [];
+        zswBezier = [];
         
         isDownstepLog = [];
         downstepStepLog = [];
@@ -144,8 +146,8 @@ classdef backSteppingWalking < handle
                 tmpDBHF = load('data/outputs/bezierInterpolation.mat');
                 tmpDBHZ = load('data/outputs/bezierZcomInterpolation.mat');
                 obj.nominalBeziers = tmpNBH.nominalBeziers;
-                obj.downstepBeziersF  = tmpDBHF.downstepBeziers;
-                obj.downstepBeziersZ  = tmpDBHZ.downstepBeziers;
+                obj.downstepBeziersF  = tmpDBHF.bezierInterpolation;
+                obj.downstepBeziersZ  = tmpDBHZ.bezierZcomInterpolation;
                 
                 obj.m = 66.5138;
                 obj.Kparam = [769.9856 911.3193 1.3764e4];
@@ -308,7 +310,12 @@ classdef backSteppingWalking < handle
                         obj.setVelocityFromBezier();
                     end
                     % if we're at downstep, increase stepCnt for downstep
+                    % as we first check to increase and then check if
+                    % isDownstep, we only do this on the second iteration
                     if obj.isDownstep
+                        if obj.downstepStep == 1
+                            obj.downstepHeight = obj.zsw;
+                        end
                         obj.downstepStep = obj.downstepStep + 1;
                     end
                 end
@@ -339,6 +346,7 @@ classdef backSteppingWalking < handle
                 obj.zdesBezier   = [obj.zdesBezier; zdesStruct.zdes];
                 obj.dzdesBezier  = [obj.dzdesBezier; zdesStruct.dzdes];
                 obj.ddzdesBezier = [obj.ddzdesBezier; zdesStruct.ddzdes];
+                obj.zswBezier    = [obj.zswBezier; obj.zsw];
                 obj.isDownstepLog = [obj.isDownstepLog; obj.isDownstep];
                 obj.downstepStepLog = [obj.downstepStepLog; obj.downstepStep];
                 
@@ -581,8 +589,8 @@ classdef backSteppingWalking < handle
                 'Ls', L_stance,'sLs', sL_stance,'dLs', dL_stance,'dsLs', dsL_stance,'Fs',Fstance,...
                 'rns', r_nonstance,'drns', dr_nonstance,'ddrns',ddr_nonstance, 'qns', q_nonstance,'dqns', dq_nonstance,'ddqns', ddq_nonstance, ...
                 'Lns', L_nonstance,'sLns', sL_nonstance,'dLns', dL_nonstance,'dsLns', dsL_nonstance,'Fns',Fnonstance );
-            obj.xsw = obj.polar.x - obj.polar.Lns*sin(obj.polar.qns); 
-            obj.zsw = obj.polar.z - obj.polar.Lns*cos(obj.polar.qns);
+            obj.xsw = obj.polar.x - r_nonstance*sin(obj.polar.qns); 
+            obj.zsw = obj.polar.z - r_nonstance*cos(obj.polar.qns);
             obj.xcom = obj.polar.x;
         end
         
@@ -690,7 +698,7 @@ classdef backSteppingWalking < handle
             if obj.NcontactLegs == 1
                 if t - obj.TimeStamp(end) > obj.TS/2
                     swingZ = obj.polar.z - obj.polar.rns*cos(obj.polar.qns);
-                    if swingZ < -0.01;
+                    if swingZ < -0.01
                         ifneg = 1;
                     end
                 end
@@ -703,17 +711,23 @@ classdef backSteppingWalking < handle
             X = obj.Xsol;
             t = obj.Tsol;
             
-            x = X(:,1);    dx = X(:,2);
-            z = X(:,3);    dz = X(:,4);
-            L1 = X(:,5);   dL1 = X(:,6); %original left leg
-            L2 = X(:,7);   dL2 = X(:,8);
-            sL1 = X(:,9);  dsL1 = X(:,10);
-            sL2 = X(:,11); dsL2 = X(:,12);
-            r1 = X(:, 13); dr1 = X(:, 14);
+            x = X(:,1);     dx = X(:,2);
+            z = X(:,3);     dz = X(:,4);
+            L1 = X(:,5);    dL1 = X(:,6); %original left leg
+            L2 = X(:,7);    dL2 = X(:,8);
+            sL1 = X(:,9);   dsL1 = X(:,10);
+            sL2 = X(:,11);  dsL2 = X(:,12);
+            r1 = X(:, 13);  dr1 = X(:, 14);
             r2 = X(:, 15);  dr2 = X(:, 16);
             q1 = X(:, 17);  dq1 = X(:, 18);
             q2 = X(:, 19);  dq2 = X(:, 20);
             
+            %%%%%%%%%%% downstep phase %%%%%%%%%%%%
+            figure; hold on; grid on;
+            plot(t,obj.isDownstepLog,'b')
+            plot(t,obj.downstepStepLog,'r')
+            legend('isDownstep','downstepStep')
+
             %%%%%%%%%%% task %%%%%%%%%%%
       
             figure; hold on; grid on;
@@ -833,6 +847,7 @@ classdef backSteppingWalking < handle
             unDeformedFootPosZ2 = z - L2.*cos(q2);
             unDeformedFootVelZ2 = dz - dL2.*cos(q2) + L2.*sin(q2).*dq2;
             
+            %%%%%%%%%% feet positions %%%%%%%%%%%
             figure; 
             subplot(2,2,1); hold on; grid on;
             plot(t, unDeformedFootPosZ1, 'r')
@@ -963,10 +978,10 @@ classdef backSteppingWalking < handle
         end
         
         function animate(obj)
-            Tsol = obj.Tsol;
+            T = obj.Tsol;
             X = obj.Xsol;
             animData = struct;
-            [~, index] = unique(Tsol);
+            [~, index] = unique(T);
             x = X(:,1); xdot = X(:,2);
             z = X(:,3); zdot = X(:,4);
             L1 = X(:,5); dL1 = X(:,6);
@@ -978,7 +993,7 @@ classdef backSteppingWalking < handle
             q1 = X(:, 17); dq1 = X(:,18);
             q2 = X(:, 19); dq2 = X(:,20);
             
-            animData.t = {Tsol(index)};
+            animData.t = {T(index)};
             animData.r1 = r1(index);
             animData.r2 = r2(index);
             animData.s1 = sL1(index);
@@ -1235,10 +1250,10 @@ classdef backSteppingWalking < handle
             
             options = optimoptions('quadprog','Display','off');
             [usol,fval,exitflag, numiter] = quadprog(H,G, A, ubA, [], [], lb, ub,[],options);
-%             if exitflag ~= 1
-%                 disp("--- QP ERROR!!! ---")
-%                 usol = zeros(2,1);
-%             end
+            if exitflag == -2
+                disp("--- QP ERROR!!! ---")
+                usol = zeros(2,1);
+            end
             
             delta = usol(2); 
             u_nonstance = obj.swingLegControl(t); 
@@ -1827,9 +1842,17 @@ classdef backSteppingWalking < handle
     
     methods %%% assist
         function [Fdes, dFdes] = getDesiredF(obj,t)
-            persistent passedDSP2
+            persistent passedDSP1 DSP1min DSP1max
+            if isempty(passedDSP1)
+                passedDSP1 = false;
+                DSP1min = 0;
+                DSP1max = 0;
+            end
+            persistent passedDSP2 DSP2min DSP2max
             if isempty(passedDSP2)
                 passedDSP2 = false;
+                DSP2min = 0;
+                DSP2max = 0;
             end
             
             if obj.NcontactLegs == 1
@@ -1838,29 +1861,72 @@ classdef backSteppingWalking < handle
                     switch obj.downstepStep
                         case 1
                             phase = 'phase1';
+                            h = obj.zsw;
+                            % as we know the splines from VLO to end of
+                            % DSP, the phase considered here slightly is
+                            % shifted (linearly) by 42%
+                            tTmp = clamp(obj.stepTime,0.0,obj.nominalBeziers.timeMax_SSP);
+                            t_norm = (tTmp - 0.0) / ...
+                                      (obj.nominalBeziers.timeMax_SSP - 0.0);
+%                             if obj.stepTime > obj.nominalBeziers.timeMax
+%                                 t_norm = 1;
+%                             else
+%                                 t_norm = obj.stepTime/obj.nominalBeziers.timeMax;
+%                             end
+                            t_norm_VLO = (t_norm - 0.50)/(1.00 - 0.50);
+                            
+                            n = length(obj.downstepBeziersF.exp.phase1.grf_SSP);
+                            bv_grf_SSP = zeros(1,n);
+                            for i = 1:n
+                                bv_grf_SSP(i) = polyval(obj.downstepBeziersF.exp.phase1.grf_SSP{i},h);
+                            end
+                            Fdes = bezier2(bv_grf_SSP,t_norm_VLO);
+                            dFdes = bezier2(obj.nominalBeziers.bv_dgrf_SSP,t_norm);
                         case 2
                             phase = 'phase2';
+                            h = obj.downstepHeight;
+                            % as we know the splines from VLO to end of
+                            % DSP, the phase considered here slightly is
+                            % shifted (linearly) by 42%
+                            if obj.stepTime > obj.nominalBeziers.timeMax
+                                t_norm = 1;
+                            else
+                                t_norm = obj.stepTime/obj.nominalBeziers.timeMax;
+                            end
+                            
+                            n = length(obj.downstepBeziersF.exp.phase2.grf_SSP);
+                            bv_grf_SSP = zeros(1,n);
+                            for i = 1:n
+                                bv_grf_SSP(i) = polyval(obj.downstepBeziersF.exp.phase2.grf_SSP{i},h);
+                            end
+                            Fdes = bezier2(bv_grf_SSP,t_norm);
+                            dFdes = bezier2(obj.nominalBeziers.bv_dgrf_SSP,t_norm);
                         case 3
                             phase = 'phase3';
-                        otherwise
-                            disp("INVALID DOWNSTEPSTEP");
+                            h = obj.downstepHeight;
+                            % as we know the splines from VLO to end of
+                            % DSP, the phase considered here slightly is
+                            % shifted (linearly) by 42%
+                            if obj.stepTime > obj.nominalBeziers.timeMax
+                                t_norm = 1;
+                            else
+                                t_norm = obj.stepTime/obj.nominalBeziers.timeMax;
+                            end
+                            t_norm_VLO = (t_norm - 0.0)/(0.42 - 0.0);
+                            
+                            n = length(obj.downstepBeziersF.exp.phase3.grf_SSP);
+                            bv_grf_SSP = zeros(1,n);
+                            for i = 1:n
+                                bv_grf_SSP(i) = polyval(obj.downstepBeziersF.exp.phase3.grf_SSP{i},h);
+                            end
+                            Fdes = bezier2(bv_grf_SSP,t_norm_VLO);
+                            dFdes = bezier2(obj.nominalBeziers.bv_dgrf_SSP,t_norm);
                     end
-%                     tTmp = clamp(obj.stepTime,0.0,obj.downstepBeziers.unexp25.(phase).timeMax_SSP);
-%                     t_norm = (tTmp - 0.0) / ...
-%                         (obj.downstepBeziers.unexp25.(phase).timeMax_SSP - 0.0);
-                    
-                    tTmp = clamp(obj.stepTime,0.0,obj.nominalBeziers.timeMax_SSP);
-                    t_norm_nominal = (tTmp - 0.0) / ...
-                        (obj.nominalBeziers.timeMax_SSP - 0.0);
-                    
-                    % eval beziers
-                    Fdes = bezier2(obj.downstepBeziers.unexp25.(phase).bv_grf_SSP,t_norm_nominal);
-                    dFdes = bezier2(obj.downstepBeziers.unexp25.(phase).bv_dgrf_SSP,t_norm_nominal);
-                    % for now, try on the third step the nominal GRFs
-                    if obj.downstepStep == 3
-                        Fdes = bezier2(obj.nominalBeziers.bv_grf_SSP,t_norm_nominal);
-                        dFdes = bezier2(obj.nominalBeziers.bv_dgrf_SSP,t_norm_nominal);
-                    end
+%                     % for now, try on the third step the nominal GRFs
+%                     if obj.downstepStep == 3
+%                         Fdes = bezier2(obj.nominalBeziers.bv_grf_SSP,t_norm_nominal);
+%                         dFdes = bezier2(obj.nominalBeziers.bv_dgrf_SSP,t_norm_nominal);
+%                     end
                 else
                     % SSP: Normalize time for bezier 
                     tTmp = clamp(obj.stepTime,0.0,obj.nominalBeziers.timeMax_SSP);
@@ -1870,62 +1936,135 @@ classdef backSteppingWalking < handle
                     Fdes = bezier2(obj.nominalBeziers.bv_grf_SSP,t_norm);
                     dFdes = bezier2(obj.nominalBeziers.bv_dgrf_SSP,t_norm);
                 end
-            else 
-                % DSP
+            else % DSP
                 if obj.isDownstep
                     phase = 'phase1';
                     switch obj.downstepStep
                         case 1
                             phase = 'phase1';
+                            h = obj.downstepHeight;
+%                             % as we know the splines from VLO to end of
+%                             % DSP, the phase considered here slightly is
+%                             % shifted (linearly) by 42%
+%                             tTmp = clamp(obj.stepTime,0.0,obj.nominalBeziers.timeMax);
+%                             t_norm = (tTmp - obj.nominalBeziers.timeMax_SSP) / ...
+%                                       (obj.nominalBeziers.timeMax - obj.nominalBeziers.timeMax_SSP);
+%                     
+%                             if obj.stepTime > obj.nominalBeziers.timeMax
+%                                 t_norm = 1;
+%                             else
+%                                 t_norm = obj.stepTime/obj.nominalBeziers.timeMax;
+%                             end
+%                             t_norm_VLO = (t_norm - 0.42)/(1.00 - 0.42);
+%                             
+%                             n = length(obj.downstepBeziersF.exp.phase1.grf_SSP);
+%                             bv_grf_DSP_st = zeros(1,n);
+%                             bv_grf_DSP_sw = zeros(1,n);
+%                             for i = 1:n
+%                                 bv_grf_DSP_st(i) = polyval(obj.downstepBeziersF.exp.phase1.grf_DSP_st{i},h);
+%                                 bv_grf_DSP_sw(i) = polyval(obj.downstepBeziersF.exp.phase1.grf_DSP_sw{i},h);
+%                             end
+%                             
+%                             Fdes(1) = bezier2(bv_grf_DSP_sw,t_norm_VLO);
+%                             Fdes(2) = bezier2(bv_grf_DSP_st,t_norm_VLO);
+%                             dFdes(1) = bezier2(obj.nominalBeziers.bv_dgrf_DSP_sw,t_norm);
+%                             dFdes(2) = bezier2(obj.nominalBeziers.bv_dgrf_DSP_st,t_norm);
+
+                            % DSP: Normalize time for bezier, DSP from 0 to 1
+                            DSPduration = obj.nominalBeziers.timeMax - obj.nominalBeziers.timeMax_SSP;
+                            if ~passedDSP1 
+                                % should be Bezier with $h$ 
+                                DSP1min = obj.stepTime;
+                                DSP1max = DSP1min + DSPduration;
+                                passedDSP1 = true;
+                            end
+                            tTmp = clamp(obj.stepTime,DSP1min,DSP1max);
+                            t_norm = (tTmp - DSP1min) / (DSP1max - DSP1min);
+%                             tTmp = clamp(obj.stepTime,0.0,obj.nominalBeziers.timeMax);
+%                             t_norm = (tTmp - obj.nominalBeziers.timeMax_SSP) / ...
+%                                 (obj.nominalBeziers.timeMax - obj.nominalBeziers.timeMax_SSP);
+                            % eval beziers
+                            Fdes = zeros(2,1);
+                            dFdes = zeros(2,1);
+                            Fdes(1) = bezier2(obj.nominalBeziers.bv_grf_DSP_sw,t_norm);
+                            Fdes(2) = bezier2(obj.nominalBeziers.bv_grf_DSP_st,t_norm);
+                            dFdes(1) = bezier2(obj.nominalBeziers.bv_dgrf_DSP_sw,t_norm);
+                            dFdes(2) = bezier2(obj.nominalBeziers.bv_dgrf_DSP_st,t_norm);
                         case 2
                             phase = 'phase2';
+                            h = obj.downstepHeight;
+%                             tTmp = clamp(obj.stepTime,0.0,obj.nominalBeziers.timeMax);
+%                             t_norm = (tTmp - obj.nominalBeziers.timeMax_SSP) / ...
+%                                       (obj.nominalBeziers.timeMax - obj.nominalBeziers.timeMax_SSP);
+%                             
+%                             n = length(obj.downstepBeziersF.exp.phase1.grf_SSP);
+%                             bv_grf_DSP_st = zeros(1,n);
+%                             bv_grf_DSP_sw = zeros(1,n);
+%                             for i = 1:n
+%                                 bv_grf_DSP_st(i) = polyval(obj.downstepBeziersF.exp.phase2.grf_DSP_st{i},h);
+%                                 bv_grf_DSP_sw(i) = polyval(obj.downstepBeziersF.exp.phase2.grf_DSP_sw{i},h);
+%                             end
+%                             
+%                             Fdes(1) = bezier2(bv_grf_DSP_sw,t_norm);
+%                             Fdes(2) = bezier2(bv_grf_DSP_st,t_norm);
+%                             dFdes(1) = bezier2(obj.nominalBeziers.bv_dgrf_DSP_sw,t_norm);
+%                             dFdes(2) = bezier2(obj.nominalBeziers.bv_dgrf_DSP_st,t_norm);
+                            % DSP: Normalize time for bezier, DSP from 0 to 1
+                            DSPduration = obj.nominalBeziers.timeMax - obj.nominalBeziers.timeMax_SSP;
+                            if ~passedDSP2 
+                                % should be Bezier with $h$ 
+                                DSP2min = obj.stepTime;
+                                DSP2max = DSP2min + DSPduration;
+                                passedDSP2 = true;
+                            end
+                            tTmp = clamp(obj.stepTime,DSP2min,DSP2max);
+                            t_norm = (tTmp - DSP2min) / (DSP2max - DSP2min);
+                            
+%                             tTmp = clamp(obj.stepTime,0.0,obj.nominalBeziers.timeMax);
+%                             t_norm = (tTmp - obj.nominalBeziers.timeMax_SSP) / ...
+%                                 (obj.nominalBeziers.timeMax - obj.nominalBeziers.timeMax_SSP);
+                            % eval beziers
+%                             Fdes = zeros(2,1);
+%                             dFdes = zeros(2,1);
+%                             Fdes(1) = bezier2(obj.nominalBeziers.bv_grf_DSP_sw,t_norm);
+%                             Fdes(2) = bezier2(obj.nominalBeziers.bv_grf_DSP_st,t_norm);
+%                             dFdes(1) = bezier2(obj.nominalBeziers.bv_dgrf_DSP_sw,t_norm);
+%                             dFdes(2) = bezier2(obj.nominalBeziers.bv_dgrf_DSP_st,t_norm);
+
+                            Fdes = zeros(2,1);
+                            dFdes = zeros(2,1);
+                            n = length(obj.downstepBeziersF.exp.phase2.grf_DSP_sw);
+                            bv_grf_DSP_st = zeros(1,n);
+                            bv_grf_DSP_sw = zeros(1,n);
+                            for i = 1:n
+                                bv_grf_DSP_st(i) = polyval(obj.downstepBeziersF.exp.phase2.grf_DSP_st{i},h);
+                                bv_grf_DSP_sw(i) = polyval(obj.downstepBeziersF.exp.phase2.grf_DSP_sw{i},h);
+                            end
+                            Fdes(1) = bezier2(bv_grf_DSP_sw,t_norm);
+                            Fdes(2) = bezier2(bv_grf_DSP_st,t_norm);
+                            dFdes(1) = bezier2(obj.nominalBeziers.bv_dgrf_DSP_sw,t_norm);
+                            dFdes(2) = bezier2(obj.nominalBeziers.bv_dgrf_DSP_st,t_norm);
+                            
                         case 3
-                            phase = 'phase3';
-                        otherwise
-                            disp("INVALID DOWNSTEPSTEP");
+                            % DSP: Normalize time for bezier, DSP from 0 to 1
+                            tTmp = clamp(obj.stepTime,0.0,obj.nominalBeziers.timeMax);
+                            t_norm = (tTmp - obj.nominalBeziers.timeMax_SSP) / ...
+                                (obj.nominalBeziers.timeMax - obj.nominalBeziers.timeMax_SSP);
+                            % eval beziers
+                            Fdes = zeros(2,1);
+                            dFdes = zeros(2,1);
+                            Fdes(1) = bezier2(obj.nominalBeziers.bv_grf_DSP_sw,t_norm);
+                            Fdes(2) = bezier2(obj.nominalBeziers.bv_grf_DSP_st,t_norm);
+                            dFdes(1) = bezier2(obj.nominalBeziers.bv_dgrf_DSP_sw,t_norm);
+                            dFdes(2) = bezier2(obj.nominalBeziers.bv_dgrf_DSP_st,t_norm);
                     end
-%                     tTmp = clamp(obj.stepTime,0.0,obj.downstepBeziers.unexp25.(phase).timeMax);
-%                     t_norm = (tTmp - obj.downstepBeziers.unexp25.(phase).timeMax_SSP) / ...
-%                         (obj.downstepBeziers.unexp25.(phase).timeMax - obj.downstepBeziers.unexp25.(phase).timeMax_SSP);
-                    tTmp = clamp(obj.stepTime,0.0,obj.nominalBeziers.timeMax);
-                    t_norm = (tTmp - obj.nominalBeziers.timeMax_SSP) / ...
-                        (obj.nominalBeziers.timeMax - obj.nominalBeziers.timeMax_SSP);
-                    % eval beziers
-                    Fdes = zeros(2,1);
-                    dFdes = zeros(2,1);
-                    % sw st naming convention 
-                    Fdes(1) = bezier2(obj.downstepBeziers.unexp25.(phase).bv_grf_DSP_sw,t_norm);
-                    Fdes(2) = bezier2(obj.downstepBeziers.unexp25.(phase).bv_grf_DSP_st,t_norm);
-                    dFdes(1) = bezier2(obj.downstepBeziers.unexp25.(phase).bv_dgrf_DSP_sw,t_norm);
-                    dFdes(2) = bezier2(obj.downstepBeziers.unexp25.(phase).bv_dgrf_DSP_st,t_norm);
-                    % for now, create spline from last desired GRF to 0
-                    if obj.downstepStep == 2
-                        if ~passedDSP2
-                            % spline t_norm now to 1, fGRF now to 0
-                            tc = t_norm;
-                            tf = 1.0;
-                            Fc = obj.FdesPrev.Fsdes;
-                            Ff = 0.0;
-                            
-                            xData = 0:0.01:1;
-                            zData = ((Ff - Fc)/(tf - tc))*(xData - tc) + Fc;
-                            nMid = round(length(zData)/2);
-                            bv_0 = [zData(1) zData(1) zData(nMid) zData(end) zData(end)];
-                            fun = @(x) costFcnBezier(x,xData,zData);
-                            obj.bv_SSP2.bv_grf_DSP_st = fmincon(fun,bv_0);
-                            
-                            passedDSP2 = true;
-                        end
-                        Fdes(2) = bezier2(obj.bv_SSP2.bv_grf_DSP_st,t_norm);
-                        dFdes(2) = (obj.bv_SSP2.bv_grf_DSP_st(end) - obj.bv_SSP2.bv_grf_DSP_st(1))*obj.nominalBeziers.timeMax_SSP;
-                    end
-                    % for now, try on the third step the nominal GRFs
-                    if obj.downstepStep == 3
-                        Fdes(1) = bezier2(obj.nominalBeziers.bv_grf_DSP_sw,t_norm);
-                        Fdes(2) = bezier2(obj.nominalBeziers.bv_grf_DSP_st,t_norm);
-                        dFdes(1) = bezier2(obj.nominalBeziers.bv_dgrf_DSP_sw,t_norm);
-                        dFdes(2) = bezier2(obj.nominalBeziers.bv_dgrf_DSP_st,t_norm);
-                    end
+%                     % for now, try on the third step the nominal GRFs
+%                     if obj.downstepStep == 3
+%                         Fdes(1) = bezier2(obj.nominalBeziers.bv_grf_DSP_sw,t_norm);
+%                         Fdes(2) = bezier2(obj.nominalBeziers.bv_grf_DSP_st,t_norm);
+%                         dFdes(1) = bezier2(obj.nominalBeziers.bv_dgrf_DSP_sw,t_norm);
+%                         dFdes(2) = bezier2(obj.nominalBeziers.bv_dgrf_DSP_st,t_norm);
+%                     end
                 else
                     % DSP: Normalize time for bezier, DSP from 0 to 1
                     tTmp = clamp(obj.stepTime,0.0,obj.nominalBeziers.timeMax);
@@ -1955,6 +2094,7 @@ classdef backSteppingWalking < handle
                     switch obj.downstepStep
                         case 1
                             phase = 'phase1';
+                            h = obj.zsw;
                             % as we know the splines from VLO to end of
                             % DSP, the phase considered here slightly is
                             % shifted (linearly) by 42%
@@ -1964,34 +2104,55 @@ classdef backSteppingWalking < handle
                                 t_norm = obj.stepTime/obj.nominalBeziers.timeMax;
                             end
                             t_norm_VLO = (t_norm - 0.42)/(1.00 - 0.42);
-                            zdes = bezier2(obj.downstepBeziers.unexp25.(phase).bv_zcom,t_norm_VLO)+0.01;
-                            dzdes = bezier2(obj.downstepBeziers.unexp25.(phase).bv_dzcom,t_norm_VLO);
-                            ddzdes = 0.0*bezier2(obj.downstepBeziers.unexp25.(phase).bv_ddzcom,t_norm_VLO);
+                            
+                            n = length(obj.downstepBeziersZ.exp.phase1.zcom);
+                            bv_zcom = zeros(1,n);
+                            for i = 1:n
+                                bv_zcom(i) = polyval(obj.downstepBeziersZ.exp.phase1.zcom{i},h);
+                            end
+                            zdes = bezier2(bv_zcom,t_norm_VLO);
+                            dzdes = bezier2(obj.nominalBeziers.bv_dzcom,t_norm);
+                            ddzdes = 0.0*bezier2(obj.nominalBeziers.bv_ddzcom,t_norm);
                             
                         case 2
                             phase = 'phase2';
+                            h = obj.downstepHeight;
+                            
                             if obj.stepTime > obj.nominalBeziers.timeMax
                                 t_norm = 1;
                             else
                                 t_norm = obj.stepTime/obj.nominalBeziers.timeMax;
                             end
-                            zdes = bezier2(obj.downstepBeziers.unexp25.(phase).bv_zcom,t_norm)+0.01;
-                            dzdes = bezier2(obj.downstepBeziers.unexp25.(phase).bv_dzcom,t_norm);
-                            ddzdes = 0.0*bezier2(obj.downstepBeziers.unexp25.(phase).bv_ddzcom,t_norm);
+                            
+                            n = length(obj.downstepBeziersZ.exp.phase2.zcom);
+                            bv_zcom = zeros(1,n);
+                            for i = 1:n
+                                bv_zcom(i) = polyval(obj.downstepBeziersZ.exp.phase2.zcom{i},h);
+                            end
+                            zdes = bezier2(bv_zcom,t_norm);
+                            dzdes = bezier2(obj.nominalBeziers.bv_dzcom,t_norm);
+                            ddzdes = 0.0*bezier2(obj.nominalBeziers.bv_ddzcom,t_norm);
                             return; 
                             
                         case 3
-                            phase = 'phase3';
-                            if obj.stepTime > obj.nominalBeziers.timeMax
-                                t_norm= 1;
-                            else
-                                t_norm= obj.stepTime/obj.nominalBeziers.timeMax;
-                            end
-                            t_norm_VLO = (t_norm - 0)/(0.42 - 0);
+                            phase = 'phase2';
+                            h = obj.downstepHeight;
                             
-                            zdes = bezier2(obj.downstepSplines.unexp25.(phase).bv_zcom,t_norm_VLO)+0.01;
-                            dzdes = bezier2(obj.downstepBeziers.unexp25.(phase).bv_dzcom,t_norm_VLO);
-                            ddzdes = 0.0*bezier2(obj.downstepBeziers.unexp25.(phase).bv_ddzcom,t_norm_VLO);
+                            if obj.stepTime > obj.nominalBeziers.timeMax
+                                t_norm = 1;
+                            else
+                                t_norm = obj.stepTime/obj.nominalBeziers.timeMax;
+                            end
+                            t_norm_VLO = (t_norm - 0.0)/(0.42 - 0.0);
+                            
+                            n = length(obj.downstepBeziersZ.exp.phase3.zcom);
+                            bv_zcom = zeros(1,n);
+                            for i = 1:n
+                                bv_zcom(i) = polyval(obj.downstepBeziersZ.exp.phase3.zcom{i},h);
+                            end
+                            zdes = bezier2(bv_zcom,t_norm_VLO);
+                            dzdes = bezier2(obj.nominalBeziers.bv_dzcom,t_norm);
+                            ddzdes = 0.0*bezier2(obj.nominalBeziers.bv_ddzcom,t_norm);
                             return;                            
                     end
                 else
@@ -2026,9 +2187,6 @@ classdef backSteppingWalking < handle
                 dzdes = dx*interp1(obj.desiredbehavior.x, obj.desiredbehavior.dzdes, x);
                 ddzdes = 0*interp1(obj.desiredbehavior.x, obj.desiredbehavior.ddzdes, x);
             end
-%             obj.zdesPrev.zdes = zdes;
-%             obj.zdesPrev.dzdes = dzdes;
-%             obj.zdesPrev.ddzdes = ddzdes;
         end
         
         function [zdes, dzdes, ddzdes] = getDesiredZUnknown(obj, t)

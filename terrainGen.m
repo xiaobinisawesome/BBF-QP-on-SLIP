@@ -186,7 +186,7 @@ classdef terrainGen < handle
         end
         
         function obj = genUnexpDownstep(obj, downstep)
-            downstepCenter = 5.0;
+            downstepCenter = 4.1;
             downstepLength = 0.6;
             
             obj.reset;
