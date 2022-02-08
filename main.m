@@ -12,11 +12,12 @@ addpath('Third')
 %% flat
 test = backSteppingWalking('human');
 % test.genDesiredbehaviorFlat;
-test.genDesiredbehaviorUnexpDownstep(0.10);
+test.genDesiredbehaviorUnexpDownstep(0.05);
 % test.genDesiredbehaviorExpDownstep(0.01);
 
 % add LIP model
 test.LIP.initializeLIP();
+test.maxStepsize = 1.0;
 % set the forward velocity
 test.useIncreasingVelocity   = true;
 test.useIncreasingDeviation  = true;

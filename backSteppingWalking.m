@@ -133,6 +133,7 @@ classdef backSteppingWalking < handle
         
         Fext = 0 %%% external push force
         LIP
+        maxStepsize = Inf;
         stepController = 'Deadbeat'; %'DeadbeatParallel'; %'Deadbeat'
         enablePushDisturbance = false;
         clfSol = struct('V', [], 'dV', [], 'delta', [], 'cbfH', [], 'exitflag', [])
@@ -1753,37 +1754,15 @@ classdef backSteppingWalking < handle
             [stepLdes, dstepLdes] = obj.LIP.LIPbasedController(t, x, x2f, dx, obj.TS - tNow);
             %%% smoothing from the current swing foot position
             stepLengthPre = - obj.stepLengthSequence(end);
-            % t = obj.t;
            
             cNow = interp1(obj.dumpVec, obj.smfVec, tNow)'; %cNow from 0 ->1
             dcNow = interp1(obj.dumpVec, obj.dsmfVec, tNow)'; %cNow from 0 ->1
 
-            if ~isempty(obj.terrain.avoidStepping)
-                N = size(obj.terrain.avoidStepping,1); 
-                for i = 1:N
-                    region = obj.terrain.avoidStepping(i,:); 
-                    if obj.newAvoid == 0 %%% was not in the avoid region 
-                        if tNow>obj.TS*5/6
-                            swingXdes = obj.stanceFootX + stepLdes;
-                            if swingXdes > region(1) && swingXdes<region(2)
-                                %                             if swingXdes> region(1) + obj.terrain.avoidSize
-                                %                                 swingXdes = region(2);
-                                %                             else
-                                obj.newAvoid = i; %% become inside the region
-                                swingXdes = region(1);
-                                %  end
-                                stepLdes = swingXdes - obj.stanceFootX;
-                                dstepLdes = 0;
-                            end
-                        end
-                    else
-                        swingXdes = obj.terrain.avoidStepping(obj.newAvoid,1);                 
-                        stepLdes = swingXdes - obj.stanceFootX;
-                    end
-                end 
-            end
             stepL = stepLdes.*cNow + (1-cNow).*stepLengthPre;
             dstepL = dstepLdes.*cNow + stepLdes.*dcNow + (-dcNow).*stepLengthPre; %% important for swing Z control.
+            
+            % clamp for max stepsize?
+            stepL = clamp(stepL,-obj.maxStepsize,obj.maxStepsize);
         end
     end 
     
@@ -2167,6 +2146,8 @@ classdef backSteppingWalking < handle
 %                             t_norm_VLO = (t_norm - 0.42)/(1.00 - 0.42);
                             
                             load('data/outputs/bezierStepTimes.mat')
+                            % TODO: hack with -0.15 here for forward time
+                            % scaling
                             timeMax = polyval(bezierStepTimes.exp.Ts1,h-0.15);
 %                             timeMax = 0.654-0.419;
                             
