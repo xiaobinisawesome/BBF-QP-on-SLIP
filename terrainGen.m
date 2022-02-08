@@ -160,7 +160,7 @@ classdef terrainGen < handle
             obj.plotTerrain();
         end
         
-         function obj = genSinu(obj)
+        function obj = genSinu(obj)
             obj.reset;
             obj.addSinu(3, -0.3); 
             obj.addSinu(3, 0.3); 
@@ -168,7 +168,7 @@ classdef terrainGen < handle
             obj.plotTerrain();
          end
         
-         function obj = genSinu2(obj)
+        function obj = genSinu2(obj)
              obj.reset;
              obj.addSinu(3, -0.6);
              obj.addSinu(3, 0.6);
@@ -185,8 +185,38 @@ classdef terrainGen < handle
             obj.plotTerrain();
         end
         
+        function obj = genUnexpDownstep(obj, downstep)
+            downstepCenter = 5.0;
+            downstepLength = 0.6;
+            
+            obj.reset;
+            obj.addStraight(10);
+            obj.smoothingFilter();
+            
+            [~,idx0] = min(abs(obj.x - (downstepCenter-downstepLength/2)));
+            [~,idxf] = min(abs(obj.x - (downstepCenter+downstepLength/2)));
+            downstep = [zeros(1,idx0-1) -downstep*ones(1,idxf-idx0+1) zeros(1,length(obj.z)-idxf)];
+            obj.z = obj.z + downstep;
+            
+            obj.plotTerrain();
+        end
+        
+        function obj = genExpDownstep(obj,downstep)
+            downstepCenter = 5.0;
+            downstepLength = 0.9;
+            
+            obj.reset;
+            obj.addStraight(downstepCenter-downstepLength/2);
+            obj.addStair(downstepLength,-downstep);
+            obj.addStair(downstepLength,downstep);
+            obj.addStraight(10-(downstepCenter+downstepLength));
+            obj.smoothingFilter();
+            
+            obj.plotTerrain();
+        end
+        
         function obj = genFlat(obj) 
-            obj.x = -10:obj.unit:10;
+            obj.x = -1:obj.unit:30;
             obj.z = zeros(size(obj.x)); 
             obj.theta = obj.z*0; 
             obj.zfilter = obj.z;

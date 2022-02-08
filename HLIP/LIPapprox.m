@@ -22,19 +22,18 @@ classdef LIPapprox < handle
         NominalTraj = struct('t', [], 'x', [], 'x2f', [], 'dx', []); %%% 
         
         %%%% control type 
-        goalBehavior%%% = 'localBehavior'  %%/ 'globalBehavior' 
-        whichController %%% 'Deadbeat' 'MPC'
+        goalBehavior = 'local'%%% = 'localBehavior'  %%/ 'globalBehavior' 
+        whichController = 'Deadbeat'%%% 'Deadbeat' 'MPC'
         whichGain = 'deadbeat' %% default
         stanceLeg
         stanceLegNum
         
-        gaitType %%% P1
+        gaitType = 'P1' %%% P1
         LIPacc =0
         targetStepSize = 0; %%% of P2 orbit
     end
     
     properties % periodic behaviors
-        
         %%% orbital slopes
         sigma1   %% sigma1   
         sigma2   %% sigma2
@@ -150,7 +149,6 @@ classdef LIPapprox < handle
     end 
     
     methods
-        
         function obj = LIPapprox(TS, TD, z)
             %%%%%
             obj.TS = TS;
@@ -166,14 +164,14 @@ classdef LIPapprox < handle
             B_hat = eATs*[-1;
                 0];
             A_hat = eATs*[1, TD;
-                0, 1];  
+                0, 1];
             
             obj.Ahat0 = A_hat; 
             obj.Bhat0 = B_hat;
             
             %%%%
          %   obj.optStepping = optimizationStepping(0);
-            
+                
         %    obj.initializeLIP(TS, TD)
         %    obj.initializeParameterID();
         %    obj.initializeSet();
@@ -182,8 +180,8 @@ classdef LIPapprox < handle
         end
         
         function obj = initializeLIP(obj) 
-            eATs = [ cosh( obj.TS*obj.lambda), sinh( obj.TS*obj.lambda)/obj.lambda;
-                obj.lambda*sinh( obj.TS*obj.lambda), cosh( obj.TS*obj.lambda)];
+            eATs = [cosh( obj.TS*obj.lambda), sinh( obj.TS*obj.lambda)/obj.lambda;
+                    obj.lambda*sinh( obj.TS*obj.lambda), cosh( obj.TS*obj.lambda)];
             %%% 
             %   obj.optStepping.updateLIP(obj.lambda, obj.TS, obj.TD)
             obj.Bhat0 = eATs*[-1;
@@ -206,7 +204,7 @@ classdef LIPapprox < handle
             % select the boundary condition. % x1_F 
             pLdes = obj.pLeftDes ; %-0.05; % m  custom selection 
             vLdes = obj.sigma2*pLdes + d; 
-            [pRdes, vRdes, ~] = LIP_sol(obj.lambda, -pLdes, vLdes, obj.TS); 
+            [pRdes, vRdes, ~] = obj.LIP_sol(-pLdes, vLdes); 
             obj.XLdes = [pLdes; vLdes]; 
             obj.XRdes = [pRdes; vRdes]; 
            
@@ -315,7 +313,7 @@ classdef LIPapprox < handle
                     obj.x1Fdes = X1Fdes;
                     VX1Fdes = obj.sigma2*X1Fdes + obj.d2;
                     obj.XLdes = [obj.x1Fdes; VX1Fdes];
-                    [x2Fdes, VX2Fdes, ~] = LIP_sol(obj.lambda, -X1Fdes, VX1Fdes, obj.TS);
+                    [x2Fdes, VX2Fdes, ~] = obj.LIP_sol(-X1Fdes, VX1Fdes);
                     obj.XRdes = [x2Fdes; VX2Fdes];
             end
             
@@ -395,7 +393,6 @@ classdef LIPapprox < handle
     end
     
     methods %%%%% if adaptive control, parameter ID
-        
         function initializeParameterID(obj)
             %%%%%%%%%%%% Parameter ID on the linear system from actual walking data %%%%%%%%%%%%
             obj.Am = blkdiag(0.05, 0.05);
@@ -677,7 +674,8 @@ classdef LIPapprox < handle
             dstepLength = 0 ; %%% not too much use for aSLIP walking
             switch obj.gaitType 
                 case 'P1'
-                   % obj.Xdes(1) = obj.vxdes/obj.sigma1 + obj.z*sin(theta);
+%                     obj.Xdes(1) = obj.vxdes/obj.sigma1 + obj.z*sin(theta);
+%                     [1 0]*((obj.Ahat0 - eye(2))*obj.Xdes)
                     S = transpose((obj.Ahat0 - eye(2))*obj.Xdes)*[1;0]/obj.Bhat0(1);
                      %%%% in the form for feedback gain*error
                     K = obj.Kdeadbeat; 
@@ -1223,7 +1221,6 @@ classdef LIPapprox < handle
     end
     
     methods %%%% MPC type planning, at discrete level 
-
         function updateLIPstates(obj, t0)
             %%%%% used for the MPC part, presumably 
             %%%%% the nominal model of reference. 
@@ -1321,14 +1318,13 @@ classdef LIPapprox < handle
         end
         
         function MPC_P2(obj)
-            
             Nsteps = 4;
             d = obj.lambda^2*(sech(obj.lambda*obj.TS/2))^2*obj.vxdes*(obj.TS+obj.TD)/(obj.lambda^2*obj.TD + 2*obj.sigma2);
             X1Fdes = -obj.targetStepSize/(2 + obj.TD*obj.sigma2);
             obj.x1Fdes = X1Fdes;
             VX1Fdes = obj.sigma2*X1Fdes + d;
             obj.XLdes = [obj.x1Fdes; VX1Fdes];
-            [x2Fdes, VX2Fdes, ~] = LIP_sol(obj.lambda, -X1Fdes, VX1Fdes, obj.TS);
+            [x2Fdes, VX2Fdes, ~] = obj.LIP_sol(-X1Fdes, VX1Fdes);
             obj.XRdes = [x2Fdes; VX2Fdes];
             
             [stepVec, x_cl] =  obj.optStepping.MPConVelocityConciseP2(obj.TD, obj.TS, Nsteps, obj.XLdes,...
@@ -1511,13 +1507,41 @@ classdef LIPapprox < handle
     end 
     
     methods   % support function  
-        
         function [xsol, dxsol] = LIPsolution(obj, x0, dx0, t)
             v = obj.lambda;
             c1 = @(y0, yd0) 1/2*(y0 + yd0/v);
             c2 = @(y0, yd0) 1/2*(y0 - yd0/v);
             xsol  =  c1(x0, dx0)*exp(v*t) + c2(x0, dx0)*exp(-v*t);
             dxsol = v*(c1(x0, dx0)*exp(v*t) - c2(x0, dx0)*exp(-v*t));
+        end
+        
+        function [y_sol,yd_sol,ydd_sol] = LIP_sol(obj,y0,yd0)
+            %%%%%%%%%%%% y_ddt = g/z0 * y   % LIP dynamics
+            %%% y(t) = c1 e^(v*t) + c2 e^(-v*t)
+            %%% y_dot(t) = v( c1 e^(v*t) - c2 e^(-v*t)) 
+            t = obj.TS;
+
+            c1 = @(y0,yd0) 1/2*(y0 + yd0/obj.lambda);
+            c2 = @(y0,yd0) 1/2*(y0 - yd0/obj.lambda);
+
+            f_y_sol  = @(t, y0, yd0) c1(y0, yd0)*exp(obj.lambda*t) + c2(y0, yd0)*exp(-obj.lambda*t);
+            f_yd_sol = @(t, y0, yd0) obj.lambda*(c1(y0, yd0)*exp(obj.lambda*t) - c2(y0, yd0)*exp(-obj.lambda*t));
+            f_ydd_sol = @(t, y0, yd0) obj.lambda^2 * y0; 
+            if length(t) == 1
+                y_sol = f_y_sol(t,y0, yd0);
+                yd_sol = f_yd_sol(t,y0, yd0);
+                ydd_sol = f_ydd_sol(t,y0, yd0);
+            else
+                y_sol = zeros(size(t));
+                yd_sol = zeros(size(t));
+                ydd_sol = zeros(size(t));
+
+                for i = 1:length(t)
+                    y_sol(i) =  f_y_sol(t(i),y0, yd0);
+                    yd_sol(i) =  f_yd_sol(t(i),y0, yd0);
+                    ydd_sol(i) =  f_ydd_sol(t(i),y0, yd0);
+                end
+            end
         end
         
         function calculateNominalTrajPerStep(obj, t0, TS, TD, polarX, curstepLength) 
@@ -1552,7 +1576,7 @@ classdef LIPapprox < handle
                 X{i+1}.minVRep() % Compute minimal representation
                 X{i+1}.minHRep() % Compute minimal representation
                 
-                % Check if the algorithm has covnerged
+                % Check if the algorithm has converged
                 if i > 1
                     if (X{i+1}.contains(X{i})) && (X{i}.contains(X{i+1}))
                         invariantSet = X{i+1}; % Set invaraint to the current iterate
