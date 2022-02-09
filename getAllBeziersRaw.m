@@ -15,10 +15,10 @@ figure(101); hold on; grid on;
 for i = 1:length(exps)
     [allDataHuman,allDataCassie] = orderHumanData(exps{i},stepHeights(i),allDataHuman,allDataCassie);
 end
-allData = allDataHuman;
-save('data/beziersRaw/allDataHuman.mat','allData')
-allData = allDataCassie;
-save('data/beziersRaw/allDataCassie.mat','allData')
+% allData = allDataHuman;
+% save('data/beziersRaw/allDataHuman.mat','allData')
+% allData = allDataCassie;
+% save('data/beziersRaw/allDataCassie.mat','allData')
 
 %%%%%%%%%%%%%%%
 %%% get beziers
@@ -28,10 +28,10 @@ allBeziersCassie = struct;
     allBeziersHuman = fitDataToBezier(allDataHuman,allBeziersHuman);
     allBeziersCassie = fitDataToBezier(allDataCassie,allBeziersCassie);
 
-allBeziers = allBeziersHuman;
-save('data/beziersRaw/allBeziersHuman.mat','allBeziers')
-allBeziers = allBeziersCassie;
-save('data/beziersRaw/allBeziersCassie.mat','allBeziers')
+% allBeziers = allBeziersHuman;
+% save('data/beziersRaw/allBeziersHuman.mat','allBeziers')
+% allBeziers = allBeziersCassie;
+% save('data/beziersRaw/allBeziersCassie.mat','allBeziers')
 
 
 %% FUNCTIONS
@@ -57,7 +57,7 @@ for fn = 1:length(fns) % exp00, exp25, exp50, ...
         ddxcom = allData.(fns{fn}).(phs{ph}).ddxcom;
 
         %%%%%%%%%%%%%
-        % ZCOM        
+        %% ZCOM        
         if ph == 1
             zmax = max(allData.exp00.('phase1').zcom);
             
@@ -200,15 +200,87 @@ for fn = 1:length(fns) % exp00, exp25, exp50, ...
         bv_ddzcom = fmincon(fun,bv0,[],[],[],[])
 
         %%%%%%%%%%%%%
-        % XCOM
-        bv0 = [xcom(1) xcom(1) xcom(round(end/2)) xcom(end) xcom(end)];
-        fun = @(x) costFcnBezier(x,time_norm,xcom);
-        bv_xcom = fmincon(fun,bv0,[],[],[],[])
+        %% XCOM
+        if ph == 1
+            n = 4;
+            xcom1 = xcom;
+            xcom2 = allData.(fns{fn}).('phase2').xcom;
+            xcom3 = allData.(fns{fn}).('phase3').xcom;
+            
+            xcom1 = xcom1 - xcom1(1);
+            xcom2 = xcom2 - xcom2(1) + xcom1(end);
+            xcom3 = xcom3 - xcom3(1) + xcom2(end);
+            
+            time_norm1 = time_norm;
+            time_norm2 = allData.(fns{fn}).('phase2').time_norm;
+            time_norm3 = allData.(fns{fn}).('phase3').time_norm;
+            time_human1 = time;
+            time_human2 = allData.(fns{fn}).('phase2').time;
+            time_human3 = allData.(fns{fn}).('phase3').time;
+            
+            bv0 = [xcom1(1) xcom1(1) xcom1(end) xcom1(end) ...
+                   xcom2(1) xcom2(1) xcom2(end) xcom2(end) ...
+                   xcom3(1) xcom3(1) xcom3(end) xcom3(end)];
+            fun = @(x) costFcnBezierZ(x,time_norm1,time_norm2,time_norm3,...
+                                        xcom1,xcom2,xcom3,...
+                                        n,n,n);
+            Aeq = [0 0 0 1 -1 0 0 0 zeros(1,n);
+                   zeros(1,n) 0 0 0 1 -1 0 0 0;
+                   1 0 0 0 zeros(1,2*n);
+                   zeros(1,2*n) 0 0 0 1];
+            beq = [zeros(2,1);
+                   0;
+                   xcom3(end)];
+            Aneq = [];
+            bneq = [];
+            
+            n1 = length(time_human1);
+            n2 = length(time_human2);
+            n3 = length(time_human3);
+            nlcon = @(bv) deal([],[bezier2(bv(1:n),1,1)/n1 - bezier2(bv(n+1:2*n),0,1)/n2;
+                                   bezier2(bv(n+1:2*n),1,1)/n2 - bezier2(bv(2*n+1:3*n),0,1)/n3]);
+            bv_xcom_all = fmincon(fun,bv0,Aneq,bneq,Aeq,beq,[],[],nlcon);
+            
+            bv_xcom_phase1 = bv_xcom_all(1:n);
+            bv_xcom_phase2 = bv_xcom_all(n+1:2*n);
+            bv_xcom_phase3 = bv_xcom_all(2*n+1:3*n);
+            
+            teval = 0:0.01:1;
+            figure; 
+            subplot(2,3,1); hold on; grid on;
+            plot(teval,bezier2(bv_xcom_phase1,teval))
+            plot(linspace(0,1,length(xcom1)),xcom1)
+            subplot(2,3,2); hold on; grid on;
+            plot(teval,bezier2(bv_xcom_phase2,teval))
+            plot(linspace(0,1,length(xcom2)),xcom2)
+            subplot(2,3,3); hold on; grid on;
+            plot(teval,bezier2(bv_xcom_phase3,teval))
+            plot(linspace(0,1,length(xcom3)),xcom3)
+            legend('bezier','raw')
+            
+            subplot(2,3,[4 5 6]); hold on; grid on;
+            plot(time_human1,bezier2(bv_xcom_phase1,time_norm1))
+            plot(time_human1,xcom1)
+            plot(time_human2+time_human1(end),bezier2(bv_xcom_phase2,time_norm2))
+            plot(time_human2+time_human1(end),xcom2)
+            plot(time_human3+time_human1(end)+time_human2(end),bezier2(bv_xcom_phase3,time_norm3))
+            plot(time_human3+time_human1(end)+time_human2(end),xcom3)
+            legend('bezier','raw')
+            linkaxes
+            
+            allBeziers.(fns{fn}).('phase1').bv_xcom = bv_xcom_phase1;
+            allBeziers.(fns{fn}).('phase2').bv_xcom = bv_xcom_phase2;
+            allBeziers.(fns{fn}).('phase3').bv_xcom = bv_xcom_phase3;
+        end
+        
+%         bv0 = [xcom(1) xcom(1) xcom(round(end/2)) xcom(end) xcom(end)];
+%         fun = @(x) costFcnBezier(x,time_norm,xcom);
+%         bv_xcom = fmincon(fun,bv0,[],[],[],[])
 
         bv0 = [dxcom(1) dxcom(1) dxcom(round(end/2)) dxcom(end) dxcom(end)];
         fun = @(x) costFcnBezier(x,time_norm,dxcom);
         bv_dxcom = fmincon(fun,bv0,[],[],[],[])
-
+        
         bv0 = [ddxcom(1) ddxcom(1) ddxcom(round(end/2)) ddxcom(end) ddxcom(end)];
         fun = @(x) costFcnBezier(x,time_norm,ddxcom);
         bv_ddxcom = fmincon(fun,bv0,[],[],[],[])
@@ -217,7 +289,7 @@ for fn = 1:length(fns) % exp00, exp25, exp50, ...
 %         allBeziersHuman.(fns{fn}).(phs{ph}).bv_zcom = bv_zcom;
 %         allBeziers.(fns{fn}).(phs{ph}).bv_dzcom = bv_dzcom;
         allBeziers.(fns{fn}).(phs{ph}).bv_ddzcom = bv_ddzcom;
-        allBeziers.(fns{fn}).(phs{ph}).bv_xcom = bv_xcom;
+%         allBeziers.(fns{fn}).(phs{ph}).bv_xcom = bv_xcom;
         allBeziers.(fns{fn}).(phs{ph}).bv_dxcom = bv_dxcom;
         allBeziers.(fns{fn}).(phs{ph}).bv_ddxcom = bv_ddxcom;
         allBeziers.(fns{fn}).(phs{ph}).timeMax = time(end);

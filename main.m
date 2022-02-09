@@ -1,4 +1,4 @@
-close all;
+% close all;
 clear all; 
 clc;
 
@@ -14,6 +14,7 @@ test = backSteppingWalking('human');
 % test.genDesiredbehaviorFlat;
 test.genDesiredbehaviorUnexpDownstep(0.05);
 % test.genDesiredbehaviorExpDownstep(0.01);
+test.expectedDownstep = true;
 
 % add LIP model
 test.LIP.initializeLIP();
@@ -23,6 +24,7 @@ test.useIncreasingVelocity   = true;
 test.useIncreasingDeviation  = true;
 test.useDecreasingRelaxation = true;
 test.useSwingFootDetection   = true;
+test.useTimeBased            = true;   % xcom phasing for zcom
 
 test.stepsToTrueDesired = 3;
 test.setVelocityFromBezier(); 
@@ -30,8 +32,8 @@ test.setVelocityFromBezier();
 % set vertical position from splines
 test.useHumanZ = true;
 test.useHumanF = true;
-test.c_relax_SSP = 0.30;
-test.c_relax_DSP = 0.30;
+test.c_relax_SSP = 0.25; %0.30
+test.c_relax_DSP = 0.25; %0.30
 
 % run
 test.setDuration(10); 
