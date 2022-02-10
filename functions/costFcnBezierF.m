@@ -1,4 +1,4 @@
-function c = costFcnBezier(bv,tdataSSP,tdataDSPst,tdataDSPsw,zdataSSP,zdataDSPst,zdataDSPsw,nS,nDst,nDsw)
+function c = costFcnBezierF(bv,tdataSSP,tdataDSPst,tdataDSPsw,zdataSSP,zdataDSPst,zdataDSPsw,nS,nDst,nDsw)
 
 bvSSP = bv(1:nS);
 bvDSPst = bv(nS+1:nS+nDst);

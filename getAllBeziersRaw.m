@@ -26,7 +26,7 @@ allBeziersHuman = struct;
 allBeziersCassie = struct;
 
     allBeziersHuman = fitDataToBezier(allDataHuman,allBeziersHuman);
-    allBeziersCassie = fitDataToBezier(allDataCassie,allBeziersCassie);
+%     allBeziersCassie = fitDataToBezier(allDataCassie,allBeziersCassie);
 
 % allBeziers = allBeziersHuman;
 % save('data/beziersRaw/allBeziersHuman.mat','allBeziers')

@@ -64,13 +64,22 @@ figure
 
 %%%%%%%%%%%%%
 % ZCOM
+teval = linspace(0,1,100);
+
+difftime = diff(time_norm);
 bv0 = [zcom_human(1) zcom_human(1) zcom_human(20) zcom_human(end) zcom_human(end)];
 fun = @(x) costFcnBezier(x,time_norm,zcom_human);
-bv_zcom = fmincon(fun,bv0,[],[],[1 0 0 0 -1],[0])
+nlcon = @(bv) deal([],[bezier2(bv,0,1) - bezier2(bv,1,1)]);
+bv_zcom = fmincon(fun,bv0,[],[],[1 0 0 0 -1],[0],[],[],nlcon)
 subplot(4,3,1); hold on; grid on;
 plot(time_norm,zcom_human)
-plot(time_norm,evalBezier(bv_zcom,time_norm))
+plot(teval,evalBezier(bv_zcom,teval))
+legend('data','bezier')
 title('zcom')
+
+% figure; hold on; grid on;
+% plot(teval,evalBezier(bv_zcom,teval))
+% plot(teval+teval(end),evalBezier(bv_zcom,teval))
 
 bv0 = [dzcom_human(1) dzcom_human(1) dzcom_human(20) dzcom_human(end) dzcom_human(end)];
 fun = @(x) costFcnBezier(x,time_norm,dzcom_human);
@@ -220,7 +229,7 @@ nominalBeziers.xcomMax = xcom_human(end);
 nominalBeziers.timeMin = time_human(1);
 nominalBeziers.timeMax = time_human(end);
 nominalBeziers.timeMax_SSP = time_human_SSP(end);
-save('data/beziers/nominalBeziersHuman.mat','nominalBeziers')
+save('data/outputs/nominalBeziersHuman.mat','nominalBeziers')
 
 %% Create VLO to VLO data for downstep comparison
 [~,idxVLO] = max(SSP1sol.z);

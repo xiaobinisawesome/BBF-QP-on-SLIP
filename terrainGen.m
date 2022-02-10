@@ -186,8 +186,8 @@ classdef terrainGen < handle
         end
         
         function obj = genUnexpDownstep(obj, downstep)
-            downstepCenter = 4.1;
-            downstepLength = 0.6;
+            downstepCenter = 4.5; % unexpected: 4.37
+            downstepLength = 0.5;
             
             obj.reset;
             obj.addStraight(10);
@@ -198,7 +198,7 @@ classdef terrainGen < handle
             downstep = [zeros(1,idx0-1) -downstep*ones(1,idxf-idx0+1) zeros(1,length(obj.z)-idxf)];
             obj.z = obj.z + downstep;
             
-            obj.plotTerrain();
+%             obj.plotTerrain();
         end
         
         function obj = genExpDownstep(obj,downstep)
