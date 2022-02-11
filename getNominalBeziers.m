@@ -89,12 +89,18 @@ plot(time_norm,dzcom_human)
 plot(time_norm,evalBezier(bv_dzcom,time_norm))
 title('dzcom')
 
-bv0 = [ddzcom_human(1) ddzcom_human(1) ddzcom_human(20) ddzcom_human(end) ddzcom_human(end)];
-fun = @(x) costFcnBezier(x,time_norm,ddzcom_human);
-bv_ddzcom = fmincon(fun,bv0,[],[],[],[])
+
+ddzcom_human = ddzcom_human(1:25);
+time_norm_ddzcom = time_norm(1:25)/time_norm(25);
+% bv0 = [ddzcom_human(1) ddzcom_human(1) ddzcom_human(20) ddzcom_human(end) ddzcom_human(end)];
+% fun = @(x) costFcnBezier(x,time_norm,ddzcom_human);
+% bv_ddzcom = fmincon(fun,bv0,[],[],[],[])
+bv0 = [ddzcom_human(1) ddzcom_human(1) ddzcom_human(10) ddzcom_human(end) ddzcom_human(end)];
+fun = @(x) costFcnBezier(x,time_norm_ddzcom,ddzcom_human);
+bv_ddzcom = fmincon(fun,bv0,[],[],[1 0 0 0 -1],[0])
 subplot(4,3,3); hold on; grid on;
-plot(time_norm,ddzcom_human)
-plot(time_norm,evalBezier(bv_ddzcom,time_norm))
+plot(time_norm_ddzcom,ddzcom_human)
+plot(time_norm_ddzcom,evalBezier(bv_ddzcom,time_norm_ddzcom))
 title('dzcom')
 
 %%%%%%%%%%%%%
@@ -633,12 +639,14 @@ plot(time_norm,dzcom_cassie)
 plot(time_norm,evalBezier(bv_dzcom,time_norm))
 title('dzcom')
 
-bv0 = [ddzcom_cassie(1) ddzcom_cassie(1) ddzcom_cassie(20) ddzcom_cassie(end) ddzcom_cassie(end)];
-fun = @(x) costFcnBezier(x,time_norm,ddzcom_cassie);
+ddzcom_cassie = ddzcom_cassie(1:25);
+time_norm_ddzcom = time_norm(1:25)/time_norm(25);
+bv0 = [ddzcom_cassie(1) ddzcom_cassie(1) ddzcom_cassie(10) ddzcom_cassie(end) ddzcom_cassie(end)];
+fun = @(x) costFcnBezier(x,time_norm_ddzcom,ddzcom_cassie);
 bv_ddzcom = fmincon(fun,bv0,[],[],[],[])
 subplot(4,3,3); hold on; grid on;
-plot(time_norm,ddzcom_cassie)
-plot(time_norm,evalBezier(bv_ddzcom,time_norm))
+plot(time_norm_ddzcom,ddzcom_cassie)
+plot(time_norm_ddzcom,evalBezier(bv_ddzcom,time_norm_ddzcom))
 title('dzcom')
 
 %%%%%%%%%%%%%

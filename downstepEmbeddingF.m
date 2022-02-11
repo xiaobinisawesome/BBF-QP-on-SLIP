@@ -208,8 +208,8 @@ for ph = 1:length(phs)
 end
 linkaxes
 
-bezierInterpolation = bvFits;
-save('data/outputs/bezierInterpolation.mat','bezierInterpolation')
+bezierFInterpolation = bvFits;
+save('data/outputs/bezierFInterpolation.mat','bezierFInterpolation')
 
 
 

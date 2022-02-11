@@ -11,20 +11,19 @@ addpath('Third')
 
 %% flat
 test = backSteppingWalking('human');
-test.genDesiredbehaviorFlat;
+% test.genDesiredbehaviorFlat;
 test.genDesiredbehaviorUnexpDownstep(0.10);
-test.expectedDownstep = true;
+test.expectedDownstep = false;
 
 % add LIP model
 test.LIP.initializeLIP();
-test.maxStepsize = 1.0;
+test.maxStepsize = Inf;
 % set the forward velocity
 test.useIncreasingVelocity   = true;
 test.useIncreasingDeviation  = true;
 test.useDecreasingRelaxation = true;
 test.useSwingFootDetection   = true;
 test.useTimeBased            = true;    % xcom phasing for zcom
-test.useNewNominalSpline     = false;    % new spline 
 
 test.stepsToTrueDesired = 3;
 test.setVelocityFromBezier(); 
@@ -32,8 +31,8 @@ test.setVelocityFromBezier();
 % set vertical position from splines
 test.useHumanZ = true;
 test.useHumanF = true;
-test.c_relax_SSP = 0.25; %0.30
-test.c_relax_DSP = 0.25; %0.30
+test.c_relax_SSP = 0.50; %0.30
+test.c_relax_DSP = 0.50; %0.30
 
 % run
 test.setDuration(7); 

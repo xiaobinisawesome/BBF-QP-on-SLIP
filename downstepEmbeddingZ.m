@@ -9,8 +9,10 @@ load('data/human/timeEvents.mat')
 load('data/human/xcomEvents.mat')
 
 %% Some settings for later down the line
-colors = {'r',  'b',   'g',  'c',   'k',  'b',   'g',  'c',   'k'};
-downsteps = [0 -0.025 -0.05 -0.075 -0.10 -0.025 -0.05 -0.075 -0.10];
+colors = {'r', 'b', 'g', 'c', 'k', ...
+          'r', 'b', 'g', 'c', 'k'};
+downsteps = [0 -0.025 -0.05 -0.075 -0.10 ...
+             0 -0.025 -0.05 -0.075 -0.10];
 exps = fieldnames(ab);
 phs = fieldnames(ab.exp00);
 
@@ -45,7 +47,7 @@ for ph = 1:length(phs)
     legend('exp00','exp25','exp50','exp75','exp100')
     
     subplot(2,6,ph+3); hold on; grid on;
-    for exp = [1 6 7 8 9]
+    for exp = [6 7 8 9 10]
 %         timeMax = db.(exps{exp}).(phs{ph}).timeMax;
         timeMax = timeEvents.(exps{exp}).(phs{ph}).timeMax;
         time = linspace(0,timeMax,100);
@@ -55,7 +57,7 @@ for ph = 1:length(phs)
     title('unexpected')
     
     subplot(2,6,ph+9); hold on; grid on;
-    for exp = [1 6 7 8 9]
+    for exp = [6 7 8 9 10]
         xcom = bezier2(ab.(exps{exp}).(phs{ph}).bv_xcom,teval);
         plot(xcom,bezier2(ab.(exps{exp}).(phs{ph}).bv_zcom,teval))
     end
@@ -87,7 +89,7 @@ for ph = 1:length(phs)
     legend('exp00','exp25','exp50','exp75','exp100')
     
     subplot(1,6,ph+3); hold on; grid on;
-    for exp = [1 6 7 8 9]
+    for exp = [6 7 8 9 10]
 %         time = db.(exps{exp}).(phs{ph}).timeMax;
         time = timeEvents.(exps{exp}).(phs{ph}).timeMax;
         plot(downsteps(exp),time,strcat(colors{exp},'o'))
@@ -168,14 +170,14 @@ for ph = 1:length(phs)
     % unexpected
     for ii = 1:length(ab.exp00.(phs{ph}).bv_zcom) % num of Bezier parameters
         bv_param = [];
-        for exp = [1 6 7 8 9] % [1 2 3 4 5]
+        for exp = [6 7 8 9 10] % [1 2 3 4 5]
             bv_param = [bv_param ab.(exps{exp}).(phs{ph}).bv_zcom(ii)];
         end
         bvFits.unexp.(phs{ph}).zcom{ii} = polyfit(downsteps(1:5),bv_param,1);
     end
     for ii = 1:length(ab.exp00.(phs{ph}).bv_dzcom) % num of Bezier parameters
         bv_dparam = [];
-        for exp = [1 2 3 4 5] % [1 2 3 4 5]
+        for exp = [6 7 8 9 10] % [1 2 3 4 5]
             bv_dparam = [bv_dparam ab.(exps{exp}).(phs{ph}).bv_dzcom(ii)];
         end
         bvFits.unexp.(phs{ph}).dzcom{ii} = polyfit(downsteps(1:5),bv_dparam,1);

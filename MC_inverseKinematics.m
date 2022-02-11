@@ -370,10 +370,22 @@ for fn = 1:length(fields)
     xcomEvents.(fields{fn}).phase3.xcomMaxIdx = idxs(7);
 end
 
-save('xcomEvents.mat','xcomEvents')
-save('timeEvents.mat','timeEvents')
 humanDataCoM = meanCoM;
-save('humanDataCoM.mat','humanDataCoM')
+
+
+%% Reorder and save
+xcomEvents.unexp00 = xcomEvents.exp00;
+timeEvents.unexp00 = timeEvents.exp00;
+humanDataCoM.unexp00 = humanDataCoM.exp00;
+reorderI = {'exp00','exp25','exp50','exp75','exp100',...
+            'unexp00','unexp25','unexp50','unexp75','unexp100'};
+xcomEvents = orderfields(xcomEvents,reorderI);
+timeEvents = orderfields(timeEvents,reorderI);
+humanDataCoM = orderfields(humanDataCoM,reorderI);
+
+save('data/human/xcomEvents.mat','xcomEvents')
+save('data/human/timeEvents.mat','timeEvents')
+save('data/human/humanDataCoM.mat','humanDataCoM')
 
 
 
