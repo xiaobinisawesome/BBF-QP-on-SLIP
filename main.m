@@ -31,8 +31,8 @@ test.setVelocityFromBezier();
 % set vertical position from splines
 test.useHumanZ = true;
 test.useHumanF = true;
-test.c_relax_SSP = 0.50; %0.30
-test.c_relax_DSP = 0.50; %0.30
+test.c_relax_SSP = 0.35; %0.30
+test.c_relax_DSP = 0.35; %0.30
 
 % run
 test.setDuration(7); 

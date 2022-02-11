@@ -11,6 +11,9 @@ classdef backSteppingWalking < handle
 %         K = @(L,Kparam) Kparam(1);
 %         D = @(L,Dparam) Dparam(1);
         
+        deltaNominal = 0.8915 - 0.8788;
+        deltaDownstep = 0.8412 - 0.8298;
+        
         % Length dependent stiffness and damping
         % now K is called as K(L,obj.Kparam) 
         g = 9.81;
@@ -125,6 +128,8 @@ classdef backSteppingWalking < handle
         swingHeight = 0.07; 
         impactVel = 0.1; 
         swingZbehavior = struct('z', [], 'dz', []);
+        swingZbehaviorOS = struct('z', [], 'dz', []);
+        swingZbehaviorUS = struct('z', [], 'dz', []);
         desiredGRF
         terrain
         z0
@@ -179,6 +184,9 @@ classdef backSteppingWalking < handle
                 obj.Dparam = 100;
                 obj.KparamSim = obj.Kparam;
                 obj.DparamSim = obj.Dparam;
+                
+                obj.deltaNominal = 0.8915 - 0.8788;
+                obj.deltaDownstep = 0.8412 - 0.8298;
             else % 'cassie'
                 disp("CASSIE NOT READY YET!")
                 throw("..")
@@ -1251,7 +1259,6 @@ classdef backSteppingWalking < handle
         
         function plotZDesired(obj)
             if obj.expectedDownstep
-                delta = 0.8915 - 0.8788;
                 h = obj.knownDownstepHeight;
                 teval = linspace(0,1,100);
                 figure; hold on; grid on;
@@ -1261,7 +1268,7 @@ classdef backSteppingWalking < handle
                 for i = 1:n
                     bv_zcom(i) = polyval(obj.downstepBeziersZ.exp.phase1.zcom{i},h);
                 end
-                plot((obj.TS/2+obj.TD)*teval,bezier2(bv_zcom,teval)-delta)
+                plot((obj.TS/2+obj.TD)*teval,bezier2(bv_zcom,teval)-obj.deltaNominal)
 
                 % phase 2
                 n = length(obj.downstepBeziersZ.exp.phase2.zcom);
@@ -1269,7 +1276,7 @@ classdef backSteppingWalking < handle
                 for i = 1:n
                     bv_zcom(i) = polyval(obj.downstepBeziersZ.exp.phase2.zcom{i},h);
                 end
-                plot((obj.TS/2+obj.TD)+(obj.TS+obj.TD)*teval,bezier2(bv_zcom,teval)-delta)
+                plot((obj.TS/2+obj.TD)+(obj.TS+obj.TD)*teval,bezier2(bv_zcom,teval)-obj.deltaNominal)
 
                 % phase 3
                 n = length(obj.downstepBeziersZ.exp.phase3.zcom);
@@ -1277,13 +1284,12 @@ classdef backSteppingWalking < handle
                 for i = 1:n
                     bv_zcom(i) = polyval(obj.downstepBeziersZ.exp.phase3.zcom{i},h);
                 end
-                plot((obj.TS/2+obj.TD)+(obj.TS+obj.TD)+(obj.TS/2)*teval,bezier2(bv_zcom,teval)-delta)
+                plot((obj.TS/2+obj.TD)+(obj.TS+obj.TD)+(obj.TS/2)*teval,bezier2(bv_zcom,teval)-obj.deltaNominal)
                 
                 % nominal
                 plot(teval*(obj.TS+obj.TD)-obj.TS/2,bezier2(obj.nominalBeziers.bv_zcom,teval))
                 plot(teval*(obj.TS+obj.TD)+obj.TS/2+obj.TD,bezier2(obj.nominalBeziers.bv_zcom,teval))
             else
-                delta = 0.8915 - 0.8788;
                 h = obj.knownDownstepHeight;
                 teval = linspace(0,1,100);
                 figure; hold on; grid on;
@@ -1293,7 +1299,7 @@ classdef backSteppingWalking < handle
                 for i = 1:n
                     bv_zcom(i) = polyval(obj.downstepBeziersZ.unexp.phase1.zcom{i},h);
                 end
-                plot((obj.TS/2+obj.TD)*teval,bezier2(bv_zcom,teval)-delta)
+                plot((obj.TS/2+obj.TD)*teval,bezier2(bv_zcom,teval)-obj.deltaNominal)
 
                 % phase 2
                 n = length(obj.downstepBeziersZ.unexp.phase2.zcom);
@@ -1301,7 +1307,7 @@ classdef backSteppingWalking < handle
                 for i = 1:n
                     bv_zcom(i) = polyval(obj.downstepBeziersZ.unexp.phase2.zcom{i},h);
                 end
-                plot((obj.TS/2+obj.TD)+(obj.TS+obj.TD)*teval,bezier2(bv_zcom,teval)-delta)
+                plot((obj.TS/2+obj.TD)+(obj.TS+obj.TD)*teval,bezier2(bv_zcom,teval)-obj.deltaNominal)
 
                 % phase 3
                 n = length(obj.downstepBeziersZ.unexp.phase3.zcom);
@@ -1309,7 +1315,7 @@ classdef backSteppingWalking < handle
                 for i = 1:n
                     bv_zcom(i) = polyval(obj.downstepBeziersZ.unexp.phase3.zcom{i},h);
                 end
-                plot((obj.TS/2+obj.TD)+(obj.TS+obj.TD)+(obj.TS/2)*teval,bezier2(bv_zcom,teval)-delta)
+                plot((obj.TS/2+obj.TD)+(obj.TS+obj.TD)+(obj.TS/2)*teval,bezier2(bv_zcom,teval)-obj.deltaNominal)
                 
                 % nominal
                 plot(teval*(obj.TS+obj.TD)-obj.TS/2,bezier2(obj.nominalBeziers.bv_zcom,teval))
@@ -1341,12 +1347,11 @@ classdef backSteppingWalking < handle
                 bv_zcom(i) = polyval(obj.downstepBeziersZ.exp.phase1.zcom{i},h);
             end
             
-            delta = 0.8915 - 0.8788;
             teval = linspace(0,1,100);
             
             figure; hold on; grid on;
-            plot(teval,bezier2(bv_zcom,teval) - delta)
-            plot(t_norm_VLO,bezier2(bv_zcom,t_norm_VLO) - delta,'ro')
+            plot(teval,bezier2(bv_zcom,teval) - obj.deltaNominal)
+            plot(t_norm_VLO,bezier2(bv_zcom,t_norm_VLO) - obj.deltaNominal,'ro')
             plot(teval-0.4,bezier2(obj.nominalBeziers.bv_zcom,teval))
             plot(t_norm-0.4,bezier2(obj.nominalBeziers.bv_zcom,t_norm),'ro')
             legend('downstep','nominal')
@@ -1864,10 +1869,20 @@ classdef backSteppingWalking < handle
             ddz = (obj.polar.Fs*cos(obj.polar.qs) + obj.polar.Fns*cos(obj.polar.qns))/obj.m - obj.g;
             swingX = clamp(swingX, obj.terrain.x(1), obj.terrain.x(end)); 
             
+%             switch obj.downstepStep
+%                 case 2
+%                     swingZdes = interp1(obj.swingZbehaviorOS.t, obj.swingZbehaviorOS.z, tInDomain);
+%                     swingdZdes = interp1(obj.swingZbehaviorOS.t, obj.swingZbehaviorOS.dz, tInDomain);
+%                 case 3
+%                     swingZdes = interp1(obj.swingZbehaviorUS.t, obj.swingZbehaviorUS.z, tInDomain);
+%                     swingdZdes = interp1(obj.swingZbehaviorUS.t, obj.swingZbehaviorUS.dz, tInDomain);
+%                 otherwise 
+%                     swingZdes = interp1(obj.swingZbehavior.t, obj.swingZbehavior.z, tInDomain);
+%                     swingdZdes = interp1(obj.swingZbehavior.t, obj.swingZbehavior.dz, tInDomain);
+%             end
+            
             swingZdes = interp1(obj.swingZbehavior.t, obj.swingZbehavior.z, tInDomain);
-            swingdZdes = interp1(obj.swingZbehavior.t, obj.swingZbehavior.dz, tInDomain);
-%             terrainZ = interp1(obj.terrain.x, obj.terrain.zfilter, swingX);
-         
+            swingdZdes = interp1(obj.swingZbehavior.t, obj.swingZbehavior.dz, tInDomain);         
             terrainZ = interp1(obj.terrain.x, obj.terrain.swingZfilter, swingX);
             
             slope = interp1(obj.terrain.x, obj.terrain.theta, swingX); 
@@ -1943,6 +1958,9 @@ classdef backSteppingWalking < handle
             % clamp for max stepsize?
             if obj.downstepStep == 1
                 obj.maxStepsize = 0.72;
+%                 obj.maxStepsize = 0.78;
+            elseif obj.downstepStep == 2
+                obj.maxStepsize = 0.8;
             else
                 obj.maxStepsize = Inf;
             end
@@ -2049,10 +2067,10 @@ classdef backSteppingWalking < handle
                             % as we know the splines from VLO to end of
                             % DSP, the phase considered here slightly is
                             % shifted (linearly) by 42%
-                            if obj.stepTime > obj.nominalBeziers.timeMax
+                            if obj.stepTime > obj.TS
                                 t_norm = 1;
                             else
-                                t_norm = obj.stepTime/obj.nominalBeziers.timeMax;
+                                t_norm = obj.stepTime/obj.TS;
                             end
                             obj.timeNormFLog = [obj.timeNormFLog; t_norm];
                             
@@ -2255,10 +2273,10 @@ classdef backSteppingWalking < handle
                             % as we know the splines from VLO to end of
                             % DSP, the phase considered here slightly is
                             % shifted (linearly) by 42%
-                            if obj.stepTime > obj.nominalBeziers.timeMax
+                            if obj.stepTime > obj.TS
                                 t_norm = 1;
                             else
-                                t_norm = obj.stepTime/obj.nominalBeziers.timeMax;
+                                t_norm = obj.stepTime/obj.TS;
                             end
                             obj.timeNormFLog = [obj.timeNormFLog; t_norm];
                             
@@ -2504,8 +2522,7 @@ classdef backSteppingWalking < handle
                         end
 
                         % evaluate
-                        delta = 0.8915 - 0.8788; % offset due to direct collocation opt
-                        zdes = bezier2(bv_zcom,t_norm_VLO) - delta;
+                        zdes = bezier2(bv_zcom,t_norm_VLO) - obj.deltaNominal;
 %                         dzdes = bezier2(bv_dzcom,t_norm_VLO);
 %                         ddzdes = 0.0;
                         dzdes = bezier2(bv_zcom,t_norm_VLO,1)/(totalDownstepTime);
@@ -2535,8 +2552,7 @@ classdef backSteppingWalking < handle
                         end
 
                         % evaluate
-                        delta = 0.8915 - 0.8788; % offset due to direct collocation opt
-                        zdes = bezier2(bv_zcom,t_norm) - delta;
+                        zdes = bezier2(bv_zcom,t_norm) - obj.deltaNominal;
 %                         dzdes = bezier2(obj.nominalBeziers.bv_dzcom,t_norm);
 %                         ddzdes = 0.0;
                         dzdes = bezier2(bv_zcom,t_norm,1)/(obj.TS+obj.TD);
@@ -2546,13 +2562,12 @@ classdef backSteppingWalking < handle
                     case 3
                         phase = 'phase3';
                         h = obj.knownDownstepHeight;
-
-                        if obj.stepTime > obj.nominalBeziers.timeMax
-                            t_norm = 1;
+                        
+                        if obj.stepTime > (obj.TS/2)
+                            t_norm_VLO = 1;
                         else
-                            t_norm = obj.stepTime/obj.nominalBeziers.timeMax;
+                            t_norm_VLO = obj.stepTime/(obj.TS/2);
                         end
-                        t_norm_VLO = (t_norm - 0.0)/(0.42 - 0.0);
                         obj.timeNormZLog = [obj.timeNormZLog; t_norm_VLO];
 
                         % get bezier polynomials from interpolation
@@ -2568,8 +2583,7 @@ classdef backSteppingWalking < handle
                         end
 
                         % evaluate
-                        delta = 0.8915 - 0.8788; % offset due to direct collocation opt
-                        zdes = bezier2(bv_zcom,t_norm_VLO) - delta;
+                        zdes = bezier2(bv_zcom,t_norm_VLO) - obj.deltaNominal;
 %                         dzdes = bezier2(bv_dzcom,t_norm_VLO);
 %                         ddzdes = bezier2(obj.nominalBeziers.bv_ddzcom,t_norm);
                         dzdes = bezier2(bv_zcom,t_norm_VLO,1)/(totalDownstepTime);
@@ -2635,9 +2649,7 @@ classdef backSteppingWalking < handle
                         end
 
                         % evaluate
-                        delta  = 0.8915 - 0.8788; % offset due to direct collocation opt
-                        delta2 = 0.8412 - 0.8298;
-                        zdes = bezier2(bv_zcom,t_norm_VLO) - delta + delta2;
+                        zdes = bezier2(bv_zcom,t_norm_VLO) - obj.deltaNominal + obj.deltaDownstep;
                         dzdes = bezier2(bv_zcom,t_norm_VLO,1)/(timeMax) + ...
                                 (bezier2(bv_zcom,t_norm_VLO)-bezier2(bv_zcom2,t_norm_VLO))/0.005*obj.dzsw2f;
                         ddzdes = bezier2(bv_dzcom,t_norm_VLO,1)/(timeMax) + ...
@@ -2649,7 +2661,6 @@ classdef backSteppingWalking < handle
 %                         dzdes = -0.1798;
 %                         dzdes = bezier2(bv_dzcom,t_norm_VLO);
 %                         ddzdes = 0.0;
-                        
                         
                         if obj.stepTime > (obj.TD+obj.TS)
                             t_norm = 1;
@@ -2690,9 +2701,7 @@ classdef backSteppingWalking < handle
                         end
 
                         % evaluate
-                        delta = 0.8915 - 0.8788; % offset due to direct collocation opt
-                        delta2 = 0.8412 - 0.8298;
-                        zdes = bezier2(bv_zcom,t_norm) - delta + delta2;
+                        zdes = bezier2(bv_zcom,t_norm) - obj.deltaNominal + obj.deltaDownstep;
 %                             dzdes = bezier2(bv_dzcom,t_norm);
                         dzdes = bezier2(bv_zcom,t_norm,1)/(obj.TS+obj.TD);
                         ddzdes = bezier2(bv_dzcom,t_norm,1)/(obj.TS+obj.TD);
@@ -2701,12 +2710,11 @@ classdef backSteppingWalking < handle
                         phase = 'phase3';
                         h = obj.downstepHeightDetected;
 
-                        if obj.stepTime > obj.nominalBeziers.timeMax
-                            t_norm = 1;
+                        if obj.stepTime > (obj.TS/2)
+                            t_norm_VLO = 1;
                         else
-                            t_norm = obj.stepTime/obj.nominalBeziers.timeMax;
+                            t_norm_VLO = obj.stepTime/(obj.TS/2);
                         end
-                        t_norm_VLO = (t_norm - 0.0)/(0.42 - 0.0);
                         obj.timeNormZLog = [obj.timeNormZLog; t_norm_VLO];
 
                         % get bezier polynomials from interpolation
@@ -2722,9 +2730,7 @@ classdef backSteppingWalking < handle
                         end
 
                         % evaluate
-                        delta = 0.8915 - 0.8788; % offset due to direct collocation opt
-                        delta2 = 0.8412 - 0.8298;
-                        zdes = bezier2(bv_zcom,t_norm_VLO) - delta + delta2;
+                        zdes = bezier2(bv_zcom,t_norm_VLO) - obj.deltaNominal + obj.deltaDownstep;
                         dzdes = bezier2(bv_zcom,t_norm_VLO,1)/(obj.TS/2);
                         ddzdes = bezier2(bv_dzcom,t_norm_VLO,1)/(obj.TS/2);                           
                 end
@@ -2784,7 +2790,7 @@ classdef backSteppingWalking < handle
           
             obj.swingZbehavior = struct('t',Tvec,'z',swingZpos,'dz',swingZvel);
             
-            % with bezier expected downstep
+            %% with bezier expected downstep
             xData = [0 0.2 0.4 0.5 0.6];
 %             zData = [0 0.07 0 -0.3 -0.8];
             zData = [0 0.07 0 -0.1 -0.3];
@@ -2805,14 +2811,72 @@ classdef backSteppingWalking < handle
                                      bezier2(bv,Tf/2) - zsw_max]);
             bv_zsw = fmincon(fun,bv0,Aneq,bneq,Aeq,beq,[],[],nlcon);
             
-%             figure; hold on; grid on;
-%             plot(Tvec,swingZpos)
-%             plot(teval,bezier2(bv_zsw,teval))
-%             legend('original sinusoid','new bezier')
+            figure; 
+            subplot(1,3,1); hold on; grid on;
+            plot(Tvec,swingZpos)
+            plot(teval,bezier2(bv_zsw,teval))
+            legend('original sinusoid','new bezier')
             
             swingZpos = bezier2(bv_zsw,teval);
             swingZvel = bezier2(bv_zsw,teval,1);
             obj.swingZbehavior = struct('t',teval,'z',swingZpos,'dz',swingZvel);
+            
+            %% Overstep
+            xData = [0 0.2 0.4 0.5 0.6];
+            zData = [0 0.07 0 -0.1 -0.3] - obj.knownDownstepHeight;
+            teval = linspace(0,0.6,100);
+            
+            zsw_max = 0.07 - obj.knownDownstepHeight;
+            zsw_neg = -0.001 - obj.knownDownstepHeight;
+            bv0 = [0 zsw_max zsw_neg -0.05- obj.knownDownstepHeight -0.3- obj.knownDownstepHeight];
+            fun = @(bv) rms(zData - bezier2(bv,xData));
+            
+            Aneq = [1 -1 0 0 0];
+            bneq = [0];
+            
+            Aeq = [1 0 0 0 0];
+            beq = [-obj.knownDownstepHeight];
+            nlcon = @(bv) deal([max(bezier2(bv,teval)) - zsw_max],...
+                                    [bezier2(bv,Tf) - zsw_neg;
+                                     bezier2(bv,Tf/2) - zsw_max]);
+            bv_zsw = fmincon(fun,bv0,Aneq,bneq,Aeq,beq,[],[],nlcon);
+            
+            subplot(1,3,2); hold on; grid on;
+            plot(teval,bezier2(bv_zsw,teval))
+            legend('new bezier')
+            
+            swingZpos = bezier2(bv_zsw,teval);
+            swingZvel = bezier2(bv_zsw,teval,1);
+            obj.swingZbehaviorOS = struct('t',teval,'z',swingZpos,'dz',swingZvel);
+            
+            %% Upstep
+            xData = [0 0.2 0.4 0.5 0.6];
+            zData = [obj.knownDownstepHeight 0.07 0 -0.1 -0.3] - obj.knownDownstepHeight;
+            teval = linspace(0,0.6,100);
+            
+            zsw_max = 0.07;
+            zsw_neg = -0.001;
+            bv0 = [0 zsw_max zsw_neg -0.05- obj.knownDownstepHeight -0.3- obj.knownDownstepHeight];
+            fun = @(bv) rms(zData - bezier2(bv,xData));
+            
+            Aneq = [1 -1 0 0 0];
+            bneq = [0];
+            
+            Aeq = [1 0 0 0 0];
+            beq = [obj.knownDownstepHeight];
+            nlcon = @(bv) deal([max(bezier2(bv,teval)) - zsw_max],...
+                                    [bezier2(bv,Tf) - zsw_neg;
+                                     bezier2(bv,Tf/2) - zsw_max]);
+            bv_zsw = fmincon(fun,bv0,Aneq,bneq,Aeq,beq,[],[],nlcon);
+            
+            subplot(1,3,3); hold on; grid on;
+            plot(teval,bezier2(bv_zsw,teval))
+            legend('new bezier')
+            
+            swingZpos = bezier2(bv_zsw,teval);
+            swingZvel = bezier2(bv_zsw,teval,1);
+            
+            obj.swingZbehaviorUS = struct('t',teval,'z',swingZpos,'dz',swingZvel);
         end
         
         %%%%%%%%%%%%%% xcom phasing stuff

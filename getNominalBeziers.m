@@ -521,15 +521,56 @@ save('data/beziers/nominalBeziersHumanAsDownstep.mat','nominalBeziersHumanAsDown
 %% Scaling parameters
 g = 9.81;
 
-stepLength_human = xcom_human(end) - xcom_human(1);
-stepLength_scaling = 0.7;
+delta = (1-0.20/(xcom_human(end) - xcom_human(1)));
+L_human = sqrt(zcom_human.^2 + (delta*xcom_human).^2);
+dL_human = (delta^2*xcom_human.*dxcom_human + zcom_human.*dzcom_human)./L_human;
+ddL_human = (2*delta^2*xcom_human.*ddxcom_human + 2*delta^2.*dxcom_human.^2 + 2*zcom_human.*ddzcom_human + 2*dzcom_human.^2)./(2*L_human) - ...
+    (2*delta^2*xcom_human.*dxcom_human + 2*zcom_human.*dzcom_human)./((4*(delta^2*xcom_human.^2 + zcom_human.^2)).^(3/2));
+
+th_human = atan2(zcom_human,delta*xcom_human);
+dth_human = (delta*(xcom_human.*dzcom_human - zcom_human.*dxcom_human))./(delta^2*xcom_human.^2 + zcom_human.^2);
+ddth_human = 1./(L_human.^2).*delta.*(xcom_human.*zcom_human.*(2*delta^2*dxcom_human.^2 + zcom_human.*ddzcom_human-2*dzcom_human.^2) - ...
+                                      delta^2*xcom_human.^2.*(zcom_human.*ddxcom_human + 2.*dxcom_human.*dzcom_human) + ...
+                                      delta^2.*xcom_human.^3.*ddzcom_human + zcom_human.^2.*(2.*dxcom_human.*dzcom_human - zcom_human.*ddxcom_human));
+L_scaling = 1.05;
+L_cassie = L_human*L_scaling;
+dL_cassie = dL_human*L_scaling;
+ddL_cassie = ddL_human*L_scaling;
+th_cassie = th_human;
+dth_cassie = dth_human;
+ddth_cassie = ddth_human;
+
+xcom_cassie = L_cassie.*cos(th_cassie);
+dxcom_cassie = dL_cassie.*cos(th_cassie) - L_cassie.*sin(th_cassie).*dth_cassie;
+ddxcom_cassie = ddL_cassie.*cos(th_cassie) - dL_cassie.*sin(th_cassie).*dth_cassie - ...
+                dL_cassie.*sin(th_cassie).*dth_cassie - L_cassie.*cos(th_cassie).*dth_cassie.^2 - ...
+                L_cassie.*sin(th_cassie).*ddth_cassie;
+zcom_cassie = L_cassie.*sin(th_cassie);
+dzcom_cassie = dL_cassie.*sin(th_cassie) + L_cassie.*cos(th_cassie).*dth_cassie;
+ddzcom_cassie = ddL_cassie.*sin(th_cassie) + dL_cassie.*cos(th_cassie).*dth_cassie + ...
+                dL_cassie.*cos(th_cassie).*dth_cassie - L_cassie.*sin(th_cassie).*dth_cassie.^2 + ...
+                L_cassie.*cos(th_cassie).*ddth_cassie;
+            
+figure; 
+subplot(1,3,1); hold on; grid on;
+plot(xcom_human,zcom_human)
+plot(xcom_cassie,zcom_cassie)
+subplot(1,3,2); hold on; grid on;
+plot(dxcom_human,dzcom_human)
+plot(dxcom_cassie,dzcom_cassie)
+subplot(1,3,3); hold on; grid on;
+plot(ddxcom_human,ddzcom_human)
+plot(ddxcom_cassie,ddzcom_cassie)
+
+% reduce by 0.10 due to foot roll
+stepLength_human = xcom_human(end) - xcom_human(1) - 0.20;
+stepLength_scaling = 0.65;
 stepLength_cassie = stepLength_scaling*stepLength_human;
 
-HLIP_vxd = 0.7;
+HLIP_vxd = 0.65;
 
 %%%%%%%%%%%%%
 % create scaling parameters
-L_scaling = 0.7;
 
 x_scaling = stepLength_cassie / stepLength_human;
 dx_scaling = HLIP_vxd / mean(dxcom_human);
@@ -548,6 +589,13 @@ L_cassie = L_scaling.*L_human;
 Ts_scaling = ( 2*pi*sqrt(g/mean(L_cassie)) )/( 2*pi*sqrt(g/mean(L_human)) );
 Ts_scaling = 1/Ts_scaling;
 
+Ts_human = time_human(end)-time_human(1);
+Ts_cassie = Ts_scaling*Ts_human;
+Ls_cassie = Ts_cassie*HLIP_vxd;
+
+x_scaling = Ls_cassie / stepLength_human;
+dx_scaling = HLIP_vxd / mean(dxcom_human);
+ddx_scaling = dx_scaling;
 
 scaling.stepLength_human = stepLength_human;
 scaling.stepLength_cassie = stepLength_cassie;
@@ -571,18 +619,13 @@ save('data/beziers/scaling.mat','scaling')
 time_cassie = Ts_scaling*time_human;
 time_cassie_SSP = Ts_scaling*time_human_SSP;
 
-xcom_cassie = xcom_human*x_scaling;
-dxcom_cassie = dxcom_human*dx_scaling;
-ddxcom_cassie = ddxcom_human*ddx_scaling;
-
-zcom_cassie = sqrt(L_cassie.^2 - xcom_cassie.^2);
-dzcom_cassie = dzcom_human*dz_scaling;
-ddzcom_cassie = ddzcom_human*ddz_scaling;
-
-figure
-plot(xcom_cassie,zcom_cassie)
-hold on
-plot(xcom_human,zcom_human)
+% xcom_cassie = xcom_human*x_scaling;
+% dxcom_cassie = dxcom_human*dx_scaling;
+% ddxcom_cassie = ddxcom_human*ddx_scaling;
+% 
+% zcom_cassie = sqrt(L_cassie.^2 - xcom_cassie.^2);
+% dzcom_cassie = dzcom_human*dz_scaling;
+% ddzcom_cassie = ddzcom_human*ddz_scaling;
 
 grf_cassie_st = grf_human_st*grf_scaling;
 grf_cassie_sw = grf_human_sw*grf_scaling;
