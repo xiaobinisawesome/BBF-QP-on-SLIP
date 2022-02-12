@@ -23,13 +23,17 @@ save('data/beziersRaw/allDataHuman.mat','allData')
 allData = allDataCassie;
 save('data/beziersRaw/allDataCassie.mat','allData')
 
+plotHumanAndCassie(allDataHuman,allDataCassie)
+
 %%%%%%%%%%%%%%%
 %%% get beziers
 allBeziersHuman = struct;
 allBeziersCassie = struct;
 
-    allBeziersHuman = fitDataToBezier(allDataHuman,allBeziersHuman);
-%     allBeziersCassie = fitDataToBezier(allDataCassie,allBeziersCassie);
+    delta2 = 0.8905 - 0.8795;
+    allBeziersHuman = fitDataToBezier(allDataHuman,allBeziersHuman,delta2);
+    delta2 = 0.0;
+    allBeziersCassie = fitDataToBezier(allDataCassie,allBeziersCassie,delta2);
 
 allBeziers = allBeziersHuman;
 save('data/beziersRaw/allBeziersHuman.mat','allBeziers')
@@ -38,7 +42,7 @@ save('data/beziersRaw/allBeziersCassie.mat','allBeziers')
 
 
 %% FUNCTIONS
-function allBeziers = fitDataToBezier(allData,allBeziers)
+function allBeziers = fitDataToBezier(allData,allBeziers,delta2)
 filename = strcat('data/human/timeEvents.mat');
 load(filename)
 
@@ -70,7 +74,6 @@ for fn = 1:length(fns) % exp00, exp25, exp50, ...
             
             scaleTowardsNominal = true;
             if scaleTowardsNominal && fn >= 6 % unexpected phases only!
-                delta2 = 0.8905 - 0.8795;
                 scaling = linspace(1,(zcom3(end)-delta2 - (zcom3(end)-zmax))/zcom3(end),length(zcom3))';
                 zcom3 = zcom3.*scaling;
                 zmaxEnd = zmax - delta2;
@@ -137,7 +140,8 @@ for fn = 1:length(fns) % exp00, exp25, exp50, ...
             plot(time_human3+time_human1(end)+time_human2(end),bezier2(bv_zcom_phase3,time_norm3),'r')
             plot(time_human3+time_human1(end)+time_human2(end),zcom3,'b')
             linkaxes
-            sgtitle(phs{ph})
+            sgtitle(fns{fn})
+            drawnow
             
             allBeziers.(fns{fn}).('phase1').bv_zcom = bv_zcom_phase1;
             allBeziers.(fns{fn}).('phase2').bv_zcom = bv_zcom_phase2;
@@ -318,8 +322,6 @@ load(filename)
 filename = strcat('data/human/timeEvents.mat');
 load(filename)
 
-downstep = stepHeight;
-
 %% Here we are only ordering data so unexp00 = exp00 (and we don't actually have unexp00 trial)
 % expInd = exp;
 % if isequal(exp,'unexp00')
@@ -436,24 +438,87 @@ grf_scaling = scaling.grf_scaling;
 Ts_scaling = scaling.Ts_scaling;
 L_scaling = scaling.L_scaling;
 
+h = stepHeight;
 strAdd = {'1','2','3'};
+persistent legOffset previousXcomEnd
+legOffset = 0;
+previousXcomEnd = 0;
+
 for i = 1:3
     add = strAdd{i};
+    
+    xcom_human = eval(strcat('xcom_human_',add));
+    zcom_human = eval(strcat('zcom_human_',add));
+    if i == 2
+        [~,idx] = max(zcom_human);
+        legOffset = xcom_human(idx);
+    elseif i == 3
+        legOffset = (xcom_human(end)+xcom_human(1))/2;
+    end
+    xcom_human = xcom_human - legOffset;
+    dxcom_human = eval(strcat('dxcom_human_',add));
+    ddxcom_human = eval(strcat('ddxcom_human_',add));
+    dzcom_human = eval(strcat('dzcom_human_',add));
+    ddzcom_human = eval(strcat('ddzcom_human_',add));
+    
+    if i == 1 || i == 2
+        delta = 1-0.20/(xcom_human(end) - xcom_human(1));
+    else
+        delta = 1;
+    end
+    L_human = sqrt(zcom_human.^2 + (delta*xcom_human).^2);
+    dL_human = (delta^2*xcom_human.*dxcom_human + zcom_human.*dzcom_human)./L_human;
+    ddL_human = (2*delta^2*xcom_human.*ddxcom_human + 2*delta^2.*dxcom_human.^2 + 2*zcom_human.*ddzcom_human + 2*dzcom_human.^2)./(2*L_human) - ...
+        (2*delta^2*xcom_human.*dxcom_human + 2*zcom_human.*dzcom_human)./((4*(delta^2*xcom_human.^2 + zcom_human.^2)).^(3/2));
+
+    th_human = atan2(zcom_human,delta*xcom_human);
+    dth_human = (delta*(xcom_human.*dzcom_human - zcom_human.*dxcom_human))./(delta^2*xcom_human.^2 + zcom_human.^2);
+    ddth_human = 1./(L_human.^2).*delta.*(xcom_human.*zcom_human.*(2*delta^2*dxcom_human.^2 + zcom_human.*ddzcom_human-2*dzcom_human.^2) - ...
+                                          delta^2*xcom_human.^2.*(zcom_human.*ddxcom_human + 2.*dxcom_human.*dzcom_human) + ...
+                                          delta^2.*xcom_human.^3.*ddzcom_human + zcom_human.^2.*(2.*dxcom_human.*dzcom_human - zcom_human.*ddxcom_human));
+
+    
+    L_scaling = 1.05;
+    L_cassie = L_human*L_scaling;
+    dL_cassie = dL_human*L_scaling;
+    ddL_cassie = ddL_human*L_scaling;
+    th_cassie = th_human;
+    dth_cassie = dth_human;
+    ddth_cassie = ddth_human;
+
+    xcom_cassie = L_cassie.*cos(th_cassie);
+    dxcom_cassie = dL_cassie.*cos(th_cassie) - L_cassie.*sin(th_cassie).*dth_cassie;
+    ddxcom_cassie = ddL_cassie.*cos(th_cassie) - dL_cassie.*sin(th_cassie).*dth_cassie - ...
+                    dL_cassie.*sin(th_cassie).*dth_cassie - L_cassie.*cos(th_cassie).*dth_cassie.^2 - ...
+                    L_cassie.*sin(th_cassie).*ddth_cassie;
+    zcom_cassie = L_cassie.*sin(th_cassie);
+    dzcom_cassie = dL_cassie.*sin(th_cassie) + L_cassie.*cos(th_cassie).*dth_cassie;
+    ddzcom_cassie = ddL_cassie.*sin(th_cassie) + dL_cassie.*cos(th_cassie).*dth_cassie + ...
+                    dL_cassie.*cos(th_cassie).*dth_cassie - L_cassie.*sin(th_cassie).*dth_cassie.^2 + ...
+                    L_cassie.*cos(th_cassie).*ddth_cassie;
+            
+    xcom_cassie = xcom_cassie + previousXcomEnd - xcom_cassie(1);
+    previousXcomEnd = xcom_cassie(end);
+    
+%     figure; hold on; grid on;
+%     plot(xcom_human,zcom_human)
+%     plot(xcom_cassie,zcom_cassie)
+    
     time_cassie = Ts_scaling*eval(strcat('time_human_',add));
     time_cassie_SSP = Ts_scaling*eval(strcat('time_human_SSP_',add));
     time_norm = eval(strcat('time_norm_',add));
     time_norm_SSP = eval(strcat('time_norm_SSP_',add));
     
-    xcom_cassie = x_scaling*eval(strcat('xcom_human_',add));
-    dxcom_cassie = dx_scaling*eval(strcat('dxcom_human_',add));
-    ddxcom_cassie = ddx_scaling*eval(strcat('ddxcom_human_',add));
+%     xcom_cassie = x_scaling*eval(strcat('xcom_human_',add));
+%     dxcom_cassie = dx_scaling*eval(strcat('dxcom_human_',add));
+%     ddxcom_cassie = ddx_scaling*eval(strcat('ddxcom_human_',add));
     
-    L_human = sqrt(eval(strcat('xcom_human_',add)).^2 + ...
-                   eval(strcat('zcom_human_',add)).^2);
-    L_cassie = L_scaling*L_human;
-    zcom_cassie = sqrt(L_cassie.^2 - xcom_cassie.^2);
-    dzcom_cassie = dz_scaling*eval(strcat('dzcom_human_',add));
-    ddzcom_cassie = ddz_scaling*eval(strcat('ddzcom_human_',add));
+%     L_human = sqrt(eval(strcat('xcom_human_',add)).^2 + ...
+%                    eval(strcat('zcom_human_',add)).^2);
+%     L_cassie = L_scaling*L_human;
+%     zcom_cassie = sqrt(L_cassie.^2 - xcom_cassie.^2);
+%     dzcom_cassie = dz_scaling*eval(strcat('dzcom_human_',add));
+%     ddzcom_cassie = ddz_scaling*eval(strcat('ddzcom_human_',add));
 
     
     allDataCassie.(exp).(strcat('phase',add)).time = time_cassie;
@@ -482,4 +547,80 @@ function printBezier(fid,data,name)
         fprintf(fid,'%f,\n',data(i));
     end
     fprintf(fid,'%f;\n\n\n',data(end));
+end
+
+function plotHumanAndCassie(allDataHuman,allDataCassie)
+    figure; 
+    subplot(2,5,1); hold on; grid on;
+    plot(allDataHuman.exp00.phase1.xcom,allDataHuman.exp00.phase1.zcom)
+    plot(allDataCassie.exp00.phase1.xcom,allDataCassie.exp00.phase1.zcom)
+    plot(allDataHuman.exp00.phase2.xcom,allDataHuman.exp00.phase2.zcom)
+    plot(allDataCassie.exp00.phase2.xcom,allDataCassie.exp00.phase2.zcom)
+    plot(allDataHuman.exp00.phase3.xcom,allDataHuman.exp00.phase3.zcom)
+    plot(allDataCassie.exp00.phase3.xcom,allDataCassie.exp00.phase3.zcom)
+    subplot(2,5,2); hold on; grid on;
+    plot(allDataHuman.exp25.phase1.xcom,allDataHuman.exp25.phase1.zcom)
+    plot(allDataCassie.exp25.phase1.xcom,allDataCassie.exp25.phase1.zcom)
+    plot(allDataHuman.exp25.phase2.xcom,allDataHuman.exp25.phase2.zcom)
+    plot(allDataCassie.exp25.phase2.xcom,allDataCassie.exp25.phase2.zcom)
+    plot(allDataHuman.exp25.phase3.xcom,allDataHuman.exp25.phase3.zcom)
+    plot(allDataCassie.exp25.phase3.xcom,allDataCassie.exp25.phase3.zcom)
+    subplot(2,5,3); hold on; grid on;
+    plot(allDataHuman.exp50.phase1.xcom,allDataHuman.exp50.phase1.zcom)
+    plot(allDataCassie.exp50.phase1.xcom,allDataCassie.exp50.phase1.zcom)
+    plot(allDataHuman.exp50.phase2.xcom,allDataHuman.exp50.phase2.zcom)
+    plot(allDataCassie.exp50.phase2.xcom,allDataCassie.exp50.phase2.zcom)
+    plot(allDataHuman.exp50.phase3.xcom,allDataHuman.exp50.phase3.zcom)
+    plot(allDataCassie.exp50.phase3.xcom,allDataCassie.exp50.phase3.zcom)
+    subplot(2,5,4); hold on; grid on;
+    plot(allDataHuman.exp75.phase1.xcom,allDataHuman.exp75.phase1.zcom)
+    plot(allDataCassie.exp75.phase1.xcom,allDataCassie.exp75.phase1.zcom)
+    plot(allDataHuman.exp75.phase2.xcom,allDataHuman.exp75.phase2.zcom)
+    plot(allDataCassie.exp75.phase2.xcom,allDataCassie.exp75.phase2.zcom)
+    plot(allDataHuman.exp75.phase3.xcom,allDataHuman.exp75.phase3.zcom)
+    plot(allDataCassie.exp75.phase3.xcom,allDataCassie.exp75.phase3.zcom)
+    subplot(2,5,5); hold on; grid on;
+    plot(allDataHuman.exp100.phase1.xcom,allDataHuman.exp100.phase1.zcom)
+    plot(allDataCassie.exp100.phase1.xcom,allDataCassie.exp100.phase1.zcom)
+    plot(allDataHuman.exp100.phase2.xcom,allDataHuman.exp100.phase2.zcom)
+    plot(allDataCassie.exp100.phase2.xcom,allDataCassie.exp100.phase2.zcom)
+    plot(allDataHuman.exp100.phase3.xcom,allDataHuman.exp100.phase3.zcom)
+    plot(allDataCassie.exp100.phase3.xcom,allDataCassie.exp100.phase3.zcom)    
+    
+    subplot(2,5,6); hold on; grid on;
+    plot(allDataHuman.exp00.phase1.xcom,allDataHuman.exp00.phase1.zcom)
+    plot(allDataCassie.exp00.phase1.xcom,allDataCassie.exp00.phase1.zcom)
+    plot(allDataHuman.exp00.phase2.xcom,allDataHuman.exp00.phase2.zcom)
+    plot(allDataCassie.exp00.phase2.xcom,allDataCassie.exp00.phase2.zcom)
+    plot(allDataHuman.exp00.phase3.xcom,allDataHuman.exp00.phase3.zcom)
+    plot(allDataCassie.exp00.phase3.xcom,allDataCassie.exp00.phase3.zcom)
+    subplot(2,5,7); hold on; grid on;
+    plot(allDataHuman.unexp25.phase1.xcom,allDataHuman.unexp25.phase1.zcom)
+    plot(allDataCassie.unexp25.phase1.xcom,allDataCassie.unexp25.phase1.zcom)
+    plot(allDataHuman.unexp25.phase2.xcom,allDataHuman.unexp25.phase2.zcom)
+    plot(allDataCassie.unexp25.phase2.xcom,allDataCassie.unexp25.phase2.zcom)
+    plot(allDataHuman.unexp25.phase3.xcom,allDataHuman.unexp25.phase3.zcom)
+    plot(allDataCassie.unexp25.phase3.xcom,allDataCassie.unexp25.phase3.zcom)
+    subplot(2,5,8); hold on; grid on;
+    plot(allDataHuman.unexp50.phase1.xcom,allDataHuman.unexp50.phase1.zcom)
+    plot(allDataCassie.unexp50.phase1.xcom,allDataCassie.unexp50.phase1.zcom)
+    plot(allDataHuman.unexp50.phase2.xcom,allDataHuman.unexp50.phase2.zcom)
+    plot(allDataCassie.unexp50.phase2.xcom,allDataCassie.unexp50.phase2.zcom)
+    plot(allDataHuman.unexp50.phase3.xcom,allDataHuman.unexp50.phase3.zcom)
+    plot(allDataCassie.unexp50.phase3.xcom,allDataCassie.unexp50.phase3.zcom)
+    subplot(2,5,9); hold on; grid on;
+    plot(allDataHuman.unexp75.phase1.xcom,allDataHuman.unexp75.phase1.zcom)
+    plot(allDataCassie.unexp75.phase1.xcom,allDataCassie.unexp75.phase1.zcom)
+    plot(allDataHuman.unexp75.phase2.xcom,allDataHuman.unexp75.phase2.zcom)
+    plot(allDataCassie.unexp75.phase2.xcom,allDataCassie.unexp75.phase2.zcom)
+    plot(allDataHuman.unexp75.phase3.xcom,allDataHuman.unexp75.phase3.zcom)
+    plot(allDataCassie.unexp75.phase3.xcom,allDataCassie.unexp75.phase3.zcom)
+    subplot(2,5,10); hold on; grid on;
+    plot(allDataHuman.unexp100.phase1.xcom,allDataHuman.unexp100.phase1.zcom)
+    plot(allDataCassie.unexp100.phase1.xcom,allDataCassie.unexp100.phase1.zcom)
+    plot(allDataHuman.unexp100.phase2.xcom,allDataHuman.unexp100.phase2.zcom)
+    plot(allDataCassie.unexp100.phase2.xcom,allDataCassie.unexp100.phase2.zcom)
+    plot(allDataHuman.unexp100.phase3.xcom,allDataHuman.unexp100.phase3.zcom)
+    plot(allDataCassie.unexp100.phase3.xcom,allDataCassie.unexp100.phase3.zcom)
+    linkaxes
 end

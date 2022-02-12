@@ -2,11 +2,9 @@ clear all; close all; clc;
 addpath('functions/')
 
 %% Load data
-load('data/beziersRaw/allBeziersHuman.mat')
+system = 'Human';
+load(strcat('data/beziersRaw/allBeziers',system,'.mat'))
 ab = allBeziers;
-
-load('data/human/timeEvents.mat')
-load('data/human/xcomEvents.mat')
 
 %% Some settings for later down the line
 colors = {'r', 'b', 'g', 'c', 'k', ...
@@ -15,56 +13,84 @@ downsteps = [0 -0.025 -0.05 -0.075 -0.10 ...
              0 -0.025 -0.05 -0.075 -0.10];
 exps = fieldnames(ab);
 phs = fieldnames(ab.exp00);
-
-%% Set first two indices of zcom equal
-% db.exp00.phase1.bv_zcom(2) = db.exp00.phase1.bv_zcom(1);
-% for exp = 1:length(exps)
-%     db.(exps{exp}).('phase1').bv_zcom(1:2) = db.exp00.('phase1').bv_zcom(1:2);
-%     db.(exps{exp}).('phase3').bv_zcom(4:5) = db.exp00.('phase3').bv_zcom(4:5);
-% end
-
-
-%% Some initial plotting
-figure
 teval = linspace(0,1,100);
-for ph = 1:length(phs)
-    subplot(2,6,ph); hold on; grid on;
-    for exp = [1 2 3 4 5]
-%         timeMax = db.(exps{exp}).(phs{ph}).timeMax;
-        timeMax = timeEvents.(exps{exp}).(phs{ph}).timeMax;
-        time = linspace(0,timeMax,100);
-        plot(time,bezier2(ab.(exps{exp}).(phs{ph}).bv_zcom,teval))
+
+%% step time loading and scaling if necessary
+load('data/human/bezierStepTimes.mat')
+load('data/beziersRaw/scaling.mat')
+if isequal(system,'Cassie')
+    for exp = {'exp','unexp'}
+        bezierStepTimes.(exp{:}).phase1 = scaling.Ts_scaling*bezierStepTimes.(exp{:}).phase1;
+        bezierStepTimes.(exp{:}).phase2 = scaling.Ts_scaling*bezierStepTimes.(exp{:}).phase2;
+        bezierStepTimes.(exp{:}).phase3 = scaling.Ts_scaling*bezierStepTimes.(exp{:}).phase3;
+        
+        bezierStepTimes.(exp{:}).Ts1(2) = scaling.Ts_scaling*bezierStepTimes.(exp{:}).Ts1(2);
+        bezierStepTimes.(exp{:}).Ts2(2) = scaling.Ts_scaling*bezierStepTimes.(exp{:}).Ts2(2);
+        bezierStepTimes.(exp{:}).Ts3(2) = scaling.Ts_scaling*bezierStepTimes.(exp{:}).Ts3(2);
     end
-    xlabel('time')
-    title('expected')
-    
-    subplot(2,6,ph+6); hold on; grid on;
-    for exp = [1 2 3 4 5]
-        xcom = bezier2(ab.(exps{exp}).(phs{ph}).bv_xcom,teval);
-        plot(xcom,bezier2(ab.(exps{exp}).(phs{ph}).bv_zcom,teval))
-    end
-    xlabel('xcom')
-    legend('exp00','exp25','exp50','exp75','exp100')
-    
-    subplot(2,6,ph+3); hold on; grid on;
-    for exp = [6 7 8 9 10]
-%         timeMax = db.(exps{exp}).(phs{ph}).timeMax;
-        timeMax = timeEvents.(exps{exp}).(phs{ph}).timeMax;
-        time = linspace(0,timeMax,100);
-        plot(time,bezier2(ab.(exps{exp}).(phs{ph}).bv_zcom,teval))
-    end
-    xlabel('time')
-    title('unexpected')
-    
-    subplot(2,6,ph+9); hold on; grid on;
-    for exp = [6 7 8 9 10]
-        xcom = bezier2(ab.(exps{exp}).(phs{ph}).bv_xcom,teval);
-        plot(xcom,bezier2(ab.(exps{exp}).(phs{ph}).bv_zcom,teval))
-    end
-    xlabel('xcom')
-    legend('unexp00','unexp25','unexp50','unexp75','unexp100')
 end
 
+
+load('data/human/timeEvents.mat')
+if isequal(system,'Cassie')
+    for i = 1:length(exps)
+        exp = exps{i};
+        timeEvents.(exp).phase1.timeMax = scaling.Ts_scaling*timeEvents.(exp).phase1.timeMax;
+        timeEvents.(exp).phase1.timeMax_SSP = scaling.Ts_scaling*timeEvents.(exp).phase1.timeMax_SSP;
+        timeEvents.(exp).phase2.timeMax = scaling.Ts_scaling*timeEvents.(exp).phase2.timeMax;
+        timeEvents.(exp).phase2.timeMax_SSP = scaling.Ts_scaling*timeEvents.(exp).phase2.timeMax_SSP;
+        timeEvents.(exp).phase3.timeMax = scaling.Ts_scaling*timeEvents.(exp).phase3.timeMax;
+        timeEvents.(exp).phase3.timeMax_SSP = scaling.Ts_scaling*timeEvents.(exp).phase3.timeMax_SSP;
+    end
+end
+
+
+%% Set first two indices of zcom equal
+ab.exp00.phase1.bv_zcom(2) = ab.exp00.phase1.bv_zcom(1);
+for exp = 1:length(exps)
+    ab.(exps{exp}).('phase1').bv_zcom(1:2) = ab.exp00.('phase1').bv_zcom(1:2);
+    ab.(exps{exp}).('phase3').bv_zcom(4:5) = ab.exp00.('phase3').bv_zcom(4:5);
+end
+
+%% Some initial plotting
+% figure
+% for ph = 1:length(phs)
+%     subplot(2,6,ph); hold on; grid on;
+%     for exp = [1 2 3 4 5]
+% %         timeMax = db.(exps{exp}).(phs{ph}).timeMax;
+%         timeMax = timeEvents.(exps{exp}).(phs{ph}).timeMax;
+%         time = linspace(0,timeMax,100);
+%         plot(time,bezier2(ab.(exps{exp}).(phs{ph}).bv_zcom,teval))
+%     end
+%     xlabel('time')
+%     title('expected')
+%     
+%     subplot(2,6,ph+6); hold on; grid on;
+%     for exp = [1 2 3 4 5]
+%         xcom = bezier2(ab.(exps{exp}).(phs{ph}).bv_xcom,teval);
+%         plot(xcom,bezier2(ab.(exps{exp}).(phs{ph}).bv_zcom,teval))
+%     end
+%     xlabel('xcom')
+%     legend('exp00','exp25','exp50','exp75','exp100')
+%     
+%     subplot(2,6,ph+3); hold on; grid on;
+%     for exp = [6 7 8 9 10]
+% %         timeMax = db.(exps{exp}).(phs{ph}).timeMax;
+%         timeMax = timeEvents.(exps{exp}).(phs{ph}).timeMax;
+%         time = linspace(0,timeMax,100);
+%         plot(time,bezier2(ab.(exps{exp}).(phs{ph}).bv_zcom,teval))
+%     end
+%     xlabel('time')
+%     title('unexpected')
+%     
+%     subplot(2,6,ph+9); hold on; grid on;
+%     for exp = [6 7 8 9 10]
+%         xcom = bezier2(ab.(exps{exp}).(phs{ph}).bv_xcom,teval);
+%         plot(xcom,bezier2(ab.(exps{exp}).(phs{ph}).bv_zcom,teval))
+%     end
+%     xlabel('xcom')
+%     legend('unexp00','unexp25','unexp50','unexp75','unexp100')
+% end
 
 
 %% Steptime scaling
@@ -142,8 +168,7 @@ xlabel('downstep [cm]')
 linkaxes
 
 bezierStepTimes = stepTimes;
-save('data/human/bezierStepTimes.mat','bezierStepTimes')
-save('data/outputs/bezierStepTimes.mat','bezierStepTimes')
+save(strcat('data/outputs/bezierStepTimes',system,'.mat'),'bezierStepTimes')
 
 %% Bezier scaling
 bvFits = struct;
@@ -463,7 +488,7 @@ bvFits.exp00.bv_zcom = bv_zcom;
 
 %% SAVING STRUCT
 bezierZcomInterpolation = bvFits;
-save('data/outputs/bezierZcomInterpolation.mat','bezierZcomInterpolation')
+save(strcat('data/outputs/bezierZcomInterpolation',system,'.mat'),'bezierZcomInterpolation')
 
 
 

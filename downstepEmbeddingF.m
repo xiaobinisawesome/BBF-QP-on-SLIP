@@ -2,11 +2,12 @@ clear all; close all; clc;
 addpath('functions/')
 
 %% Load data
-load('data/beziers/allBeziersHuman.mat')
+system = 'Human';
+load(strcat('data/beziers/allBeziers',system,'.mat'))
 ab = allBeziers;
 
-load('data/human/timeEvents.mat')
-load('data/human/xcomEvents.mat')
+load(strcat('data/outputs/bezierStepTimes,',system,'.mat'))
+load('data/beziersRaw/scaling.mat')
 
 %% Some settings for later down the line
 colors = {'r',  'b',   'g',  'c',   'k',  'b',   'g',  'c',   'k'};
@@ -15,65 +16,62 @@ exps = fieldnames(ab);
 phs = fieldnames(ab.exp00);
 Tphs = {'Ts1','Ts2','Ts3'};
 
+teval = linspace(0,1,100);
 
 %% Some initial plotting
-figure
-teval = linspace(0,1,100);
-for ph = 1:length(phs)
-    subplot(2,6,(ph-1)*2+1); hold on; grid on;
-    for exp = [1 2 3 4 5]
-        timeMax = timeEvents.(exps{exp}).(phs{ph}).timeMax_SSP;
-        time = linspace(0,timeMax,100);
-        plot(time,bezier2(ab.(exps{exp}).(phs{ph}).bv_grf_SSP,teval))
-    end
-    xlabel('time')
-    title('expected')
-    
-    subplot(2,6,(ph-1)*2+2); hold on; grid on;
-    try
-        for exp = [1 2 3 4 5]
-            timeMax = timeEvents.(exps{exp}).(phs{ph}).timeMax - ...
-                timeEvents.(exps{exp}).(phs{ph}).timeMax_SSP;
-            time = linspace(0,timeMax,100);
-            plot(time,bezier2(ab.(exps{exp}).(phs{ph}).bv_grf_DSP_st,teval))
-            plot(time,bezier2(ab.(exps{exp}).(phs{ph}).bv_grf_DSP_sw,teval))
-        end
-        xlabel('time')
-        title('expected')
-    end
-    legend('exp00','exp25','exp50','exp75','exp100')
-    
-    
-    
-    subplot(2,6,(ph-1)*2+1+6); hold on; grid on;
-    for exp = [1 6 7 8 9]
-        timeMax = timeEvents.(exps{exp}).(phs{ph}).timeMax_SSP;
-        time = linspace(0,timeMax,100);
-        plot(time,bezier2(ab.(exps{exp}).(phs{ph}).bv_grf_SSP,teval))
-    end
-    xlabel('time')
-    title('expected')
-    
-    subplot(2,6,(ph-1)*2+2+6); hold on; grid on;
-    try
-        for exp = [1 6 7 8 9]
-            timeMax = timeEvents.(exps{exp}).(phs{ph}).timeMax - ...
-                timeEvents.(exps{exp}).(phs{ph}).timeMax_SSP;
-            time = linspace(0,timeMax,100);
-            plot(time,bezier2(ab.(exps{exp}).(phs{ph}).bv_grf_DSP_st,teval))
-            plot(time,bezier2(ab.(exps{exp}).(phs{ph}).bv_grf_DSP_sw,teval))
-        end
-        xlabel('time')
-        title('expected')
-    end
-    
-    legend('exp00','unexp25','unexp50','unexp75','unexp100')
-end
-
-
-
-%% Steptime scaling
-load('data/human/bezierStepTimes.mat')
+% load('data/human/timeEvents.mat')
+% 
+% figure
+% for ph = 1:length(phs)
+%     subplot(2,6,(ph-1)*2+1); hold on; grid on;
+%     for exp = [1 2 3 4 5]
+%         timeMax = timeEvents.(exps{exp}).(phs{ph}).timeMax_SSP;
+%         time = linspace(0,timeMax,100);
+%         plot(time,bezier2(ab.(exps{exp}).(phs{ph}).bv_grf_SSP,teval))
+%     end
+%     xlabel('time')
+%     title('expected')
+%     
+%     subplot(2,6,(ph-1)*2+2); hold on; grid on;
+%     try
+%         for exp = [1 2 3 4 5]
+%             timeMax = timeEvents.(exps{exp}).(phs{ph}).timeMax - ...
+%                 timeEvents.(exps{exp}).(phs{ph}).timeMax_SSP;
+%             time = linspace(0,timeMax,100);
+%             plot(time,bezier2(ab.(exps{exp}).(phs{ph}).bv_grf_DSP_st,teval))
+%             plot(time,bezier2(ab.(exps{exp}).(phs{ph}).bv_grf_DSP_sw,teval))
+%         end
+%         xlabel('time')
+%         title('expected')
+%     end
+%     legend('exp00','exp25','exp50','exp75','exp100')
+%     
+%     
+%     
+%     subplot(2,6,(ph-1)*2+1+6); hold on; grid on;
+%     for exp = [1 6 7 8 9]
+%         timeMax = timeEvents.(exps{exp}).(phs{ph}).timeMax_SSP;
+%         time = linspace(0,timeMax,100);
+%         plot(time,bezier2(ab.(exps{exp}).(phs{ph}).bv_grf_SSP,teval))
+%     end
+%     xlabel('time')
+%     title('expected')
+%     
+%     subplot(2,6,(ph-1)*2+2+6); hold on; grid on;
+%     try
+%         for exp = [1 6 7 8 9]
+%             timeMax = timeEvents.(exps{exp}).(phs{ph}).timeMax - ...
+%                 timeEvents.(exps{exp}).(phs{ph}).timeMax_SSP;
+%             time = linspace(0,timeMax,100);
+%             plot(time,bezier2(ab.(exps{exp}).(phs{ph}).bv_grf_DSP_st,teval))
+%             plot(time,bezier2(ab.(exps{exp}).(phs{ph}).bv_grf_DSP_sw,teval))
+%         end
+%         xlabel('time')
+%         title('expected')
+%     end
+%     
+%     legend('exp00','unexp25','unexp50','unexp75','unexp100')
+% end
 
 %% Bezier scaling
 bvFits = struct;
@@ -209,7 +207,7 @@ end
 linkaxes
 
 bezierFInterpolation = bvFits;
-save('data/outputs/bezierFInterpolation.mat','bezierFInterpolation')
+save(strcat('data/outputs/bezierFInterpolation',system,'.mat'),'bezierFInterpolation')
 
 
 

@@ -90,16 +90,16 @@ plot(time_norm,evalBezier(bv_dzcom,time_norm))
 title('dzcom')
 
 
-ddzcom_human = ddzcom_human(1:25);
+ddzcom_human_tmp = ddzcom_human(1:25);
 time_norm_ddzcom = time_norm(1:25)/time_norm(25);
 % bv0 = [ddzcom_human(1) ddzcom_human(1) ddzcom_human(20) ddzcom_human(end) ddzcom_human(end)];
 % fun = @(x) costFcnBezier(x,time_norm,ddzcom_human);
 % bv_ddzcom = fmincon(fun,bv0,[],[],[],[])
-bv0 = [ddzcom_human(1) ddzcom_human(1) ddzcom_human(10) ddzcom_human(end) ddzcom_human(end)];
-fun = @(x) costFcnBezier(x,time_norm_ddzcom,ddzcom_human);
+bv0 = [ddzcom_human_tmp(1) ddzcom_human_tmp(1) ddzcom_human_tmp(10) ddzcom_human_tmp(end) ddzcom_human_tmp(end)];
+fun = @(x) costFcnBezier(x,time_norm_ddzcom,ddzcom_human_tmp);
 bv_ddzcom = fmincon(fun,bv0,[],[],[1 0 0 0 -1],[0])
 subplot(4,3,3); hold on; grid on;
-plot(time_norm_ddzcom,ddzcom_human)
+plot(time_norm_ddzcom,ddzcom_human_tmp)
 plot(time_norm_ddzcom,evalBezier(bv_ddzcom,time_norm_ddzcom))
 title('dzcom')
 
@@ -532,6 +532,7 @@ dth_human = (delta*(xcom_human.*dzcom_human - zcom_human.*dxcom_human))./(delta^
 ddth_human = 1./(L_human.^2).*delta.*(xcom_human.*zcom_human.*(2*delta^2*dxcom_human.^2 + zcom_human.*ddzcom_human-2*dzcom_human.^2) - ...
                                       delta^2*xcom_human.^2.*(zcom_human.*ddxcom_human + 2.*dxcom_human.*dzcom_human) + ...
                                       delta^2.*xcom_human.^3.*ddzcom_human + zcom_human.^2.*(2.*dxcom_human.*dzcom_human - zcom_human.*ddxcom_human));
+
 L_scaling = 1.05;
 L_cassie = L_human*L_scaling;
 dL_cassie = dL_human*L_scaling;
@@ -618,14 +619,6 @@ save('data/beziers/scaling.mat','scaling')
 %% Create Cassie data
 time_cassie = Ts_scaling*time_human;
 time_cassie_SSP = Ts_scaling*time_human_SSP;
-
-% xcom_cassie = xcom_human*x_scaling;
-% dxcom_cassie = dxcom_human*dx_scaling;
-% ddxcom_cassie = ddxcom_human*ddx_scaling;
-% 
-% zcom_cassie = sqrt(L_cassie.^2 - xcom_cassie.^2);
-% dzcom_cassie = dzcom_human*dz_scaling;
-% ddzcom_cassie = ddzcom_human*ddz_scaling;
 
 grf_cassie_st = grf_human_st*grf_scaling;
 grf_cassie_sw = grf_human_sw*grf_scaling;
@@ -850,7 +843,7 @@ nominalBeziers.xcomMax = xcom_cassie(end);
 nominalBeziers.timeMin = time_cassie(1);
 nominalBeziers.timeMax = time_cassie(end);
 nominalBeziers.timeMax_SSP = time_cassie_SSP(end);
-save('data/beziers/nominalBeziersCassie.mat','nominalBeziers')
+save('data/outputs/nominalBeziersCassie.mat','nominalBeziers')
 
 
 
