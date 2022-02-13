@@ -521,7 +521,7 @@ save('data/beziers/nominalBeziersHumanAsDownstep.mat','nominalBeziersHumanAsDown
 %% Scaling parameters
 g = 9.81;
 
-delta = (1-0.20/(xcom_human(end) - xcom_human(1)));
+delta = (1-0.25/(xcom_human(end) - xcom_human(1)));
 L_human = sqrt(zcom_human.^2 + (delta*xcom_human).^2);
 dL_human = (delta^2*xcom_human.*dxcom_human + zcom_human.*dzcom_human)./L_human;
 ddL_human = (2*delta^2*xcom_human.*ddxcom_human + 2*delta^2.*dxcom_human.^2 + 2*zcom_human.*ddzcom_human + 2*dzcom_human.^2)./(2*L_human) - ...
@@ -533,7 +533,7 @@ ddth_human = 1./(L_human.^2).*delta.*(xcom_human.*zcom_human.*(2*delta^2*dxcom_h
                                       delta^2*xcom_human.^2.*(zcom_human.*ddxcom_human + 2.*dxcom_human.*dzcom_human) + ...
                                       delta^2.*xcom_human.^3.*ddzcom_human + zcom_human.^2.*(2.*dxcom_human.*dzcom_human - zcom_human.*ddxcom_human));
 
-L_scaling = 1.05;
+L_scaling = 0.94;
 L_cassie = L_human*L_scaling;
 dL_cassie = dL_human*L_scaling;
 ddL_cassie = ddL_human*L_scaling;
@@ -564,7 +564,7 @@ plot(ddxcom_human,ddzcom_human)
 plot(ddxcom_cassie,ddzcom_cassie)
 
 % reduce by 0.10 due to foot roll
-stepLength_human = xcom_human(end) - xcom_human(1) - 0.20;
+stepLength_human = xcom_human(end) - xcom_human(1) - 0.25;
 stepLength_scaling = 0.65;
 stepLength_cassie = stepLength_scaling*stepLength_human;
 

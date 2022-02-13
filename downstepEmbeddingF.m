@@ -6,7 +6,7 @@ system = 'Human';
 load(strcat('data/beziers/allBeziers',system,'.mat'))
 ab = allBeziers;
 
-load(strcat('data/outputs/bezierStepTimes,',system,'.mat'))
+load(strcat('data/outputs/bezierStepTimes',system,'.mat'))
 load('data/beziersRaw/scaling.mat')
 
 %% Some settings for later down the line

@@ -140,7 +140,7 @@ for i = 1:length(fns) % exp25, exp50, ...
 %         fun = @(x) costFcnBezier(x,time_norm_SSP,grf_DSP_sw);
 %         bv_grf_DSP_sw = fmincon(fun,bv0,[],[],DSPswAeq,DSPswbeq)
 
-        FSSP1 = 350;
+        FSSP1 = 438.6;
         FSSP2 = 350;
         FSSP3 = 426;
         if ii == 1

@@ -1,4 +1,4 @@
-% close all;
+close all;
 clear all; 
 clc;
 
@@ -10,7 +10,10 @@ addpath('results')
 addpath('Third')
 
 %% flat
-test = backSteppingWalking('Cassie');
+% cassie expected:   y
+% cassie unexpected: y
+
+test = backSteppingWalking('Human');
 % test.genDesiredbehaviorFlat;
 test.genDesiredbehaviorUnexpDownstep(0.10);
 test.expectedDownstep = false;
@@ -25,17 +28,17 @@ test.useDecreasingRelaxation = true;
 test.useSwingFootDetection   = true;
 test.useTimeBased            = true;    % xcom phasing for zcom
 
-test.stepsToTrueDesired = 3;
+test.stepsToTrueDesired = 5;
 test.setVelocityFromBezier(); 
 
 % set vertical position from splines
 test.useHumanZ = true;
 test.useHumanF = true;
-test.c_relax_SSP = 0.35; %0.30
-test.c_relax_DSP = 0.35; %0.30
+test.c_relax_SSP = 0.30; %0.30
+test.c_relax_DSP = 0.30; %0.30
 
 % run
-test.setDuration(7); 
+test.setDuration(8); 
 test.simBackStepping;
 % plot
 test.plot;
