@@ -298,6 +298,8 @@ for i = 1:9
 %     legend('xst','xsw','xst_{var}','xsw_{var}')
 end
 
+save('data/human/Lstep_struct.mat','Lstep_struct')
+
 %% Plotting steptimes
 phs = fieldnames(Lstep_struct);
 

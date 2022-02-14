@@ -71,8 +71,8 @@ classdef backSteppingOutput
                 obj.bezierStepTimes   = tmpBST.bezierStepTimes;
 
                 obj.mFrac = 31 / (66.5138);
-                obj.deltaNominal = 0.9361 - 0.9220;
-                obj.deltaDownstep = 0.8824 - 0.8557;
+                obj.deltaNominal = 0.1150 - (0.7266-0.7211);
+                obj.deltaDownstep = 0.0267 + (0.6936-0.6868);
             end
             SSPfrac = (obj.nominalBeziers.timeMax_SSP)/obj.nominalBeziers.timeMax;
             obj.TS = SSPfrac*obj.nominalBeziers.timeMax;
@@ -113,9 +113,9 @@ classdef backSteppingOutput
                 if obj.expectedDownstep
                     [Fdes, dFdes] = getDesiredFExpected(obj,t);
                 else
-                    [Fdes, dFdes] = getDesiredFUnexpected(obj,t);
+%                     [Fdes, dFdes] = getDesiredFUnexpected(obj,t);
 %                     [Fdes, dFdes] = getDesiredFExpected(obj,t);
-%                     [Fdes, dFdes] = getDesiredFUnexpectedAsExpected(obj,t);
+                    [Fdes, dFdes] = getDesiredFUnexpectedAsExpected(obj,t);
                 end
             else
                 [Fdes, dFdes] = getDesiredFNominal(obj,t);
@@ -729,8 +729,6 @@ classdef backSteppingOutput
 
                         % evaluate
                         zdes = bezier2(bv_zcom,t_norm_VLO) - obj.deltaNominal;
-%                         dzdes = bezier2(bv_dzcom,t_norm_VLO);
-%                         ddzdes = 0.0;
                         dzdes = bezier2(bv_zcom,t_norm_VLO,1)/(totalDownstepTime);
                         ddzdes = bezier2(bv_dzcom,t_norm_VLO,1)/(totalDownstepTime);
                         return;
@@ -759,11 +757,8 @@ classdef backSteppingOutput
 
                         % evaluate
                         zdes = bezier2(bv_zcom,t_norm) - obj.deltaNominal;
-%                         dzdes = bezier2(obj.nominalBeziers.bv_dzcom,t_norm);
-%                         ddzdes = 0.0;
                         dzdes = bezier2(bv_zcom,t_norm,1)/(obj.TS+obj.TD);
                         ddzdes = bezier2(bv_dzcom,t_norm,1)/(obj.TS+obj.TD);
-%                         ddzdes = bezier2(obj.nominalBeziers.bv_ddzcom,t_norm);
                         return; 
                     case 3
                         phase = 'phase3';
@@ -790,8 +785,6 @@ classdef backSteppingOutput
 
                         % evaluate
                         zdes = bezier2(bv_zcom,t_norm_VLO) - obj.deltaNominal;
-%                         dzdes = bezier2(bv_dzcom,t_norm_VLO);
-%                         ddzdes = bezier2(obj.nominalBeziers.bv_ddzcom,t_norm);
                         dzdes = bezier2(bv_zcom,t_norm_VLO,1)/(totalDownstepTime);
                         ddzdes = bezier2(bv_dzcom,t_norm_VLO,1)/(totalDownstepTime);
                         return;                            

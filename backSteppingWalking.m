@@ -56,6 +56,8 @@ classdef backSteppingWalking < handle
         useHumanZ = false;
         useHumanF = false;
         useTimeBased = true;
+        exp = 'exp00';
+        tLastVLO = 5.821;
         
         isDownstep = false;
         expectedDownstep = false;
@@ -112,6 +114,9 @@ classdef backSteppingWalking < handle
         zsw2fLog = [];
         qsLog = [];
         
+        stepLdesOriginalLog = [];
+        stepLdesTmpLog = [];
+        
         
         FliftOff = 0;
         stepLengthSequence = 0;         
@@ -147,10 +152,12 @@ classdef backSteppingWalking < handle
         epsilon = .1; % 0.1;
         c_relax_DSP = 0.15; %0.3; %%% DSP, stance force relax coef
         c_relax_SSP = 0.15;
+        c_relax_DSP_downstep = 0.5;
+        c_relax_SSP_downstep = 0.5;
         deltaF = 50; % 10, 20 (was 50)
         Kbackstepping = 100; 
-        gama = 10;  %%% clf : dV< -gama*V; 
-        beta = 500  %%% CBF: dh > - beta*(h- Fmin) with h = Fs in SSP; %% larger 
+        gama = 10; % was 10 %%% clf : dV< -gama*V; 
+        beta = 500 % was 500 %%% CBF: dh > - beta*(h- Fmin) with h = Fs in SSP; %% larger 
         Fmin = 20; 
         ddLmax = 500
         
@@ -173,7 +180,7 @@ classdef backSteppingWalking < handle
     end 
     
     methods
-        function obj = backSteppingWalking(system)
+        function obj = backSteppingWalking(system,exp)
             if isequal(system,'Human')
                 tmpNBH = load('data/outputs/nominalBeziersHuman.mat');
                 tmpDBHF = load('data/outputs/bezierFInterpolationHuman.mat');
@@ -215,6 +222,8 @@ classdef backSteppingWalking < handle
 %                 obj.deltaDownstep = 0.8824 - 0.8557 - (0.8936 - 0.8824);
             end
             
+            obj.exp = exp;
+            
             SSPfrac = (obj.nominalBeziers.timeMax_SSP)/obj.nominalBeziers.timeMax;
             obj.TS = SSPfrac*obj.nominalBeziers.timeMax;
             obj.TD = (1-SSPfrac)*obj.nominalBeziers.timeMax;
@@ -235,7 +244,7 @@ classdef backSteppingWalking < handle
         function setVelocityFromBezier(obj)
             % we walk a bit slower in order to have xcom less affected by
             % the actuation on z
-            dxcom = 0.9*mean(bezier2(obj.nominalBeziers.bv_dxcom,0:0.01:1)); 
+            dxcom = 1.0*mean(bezier2(obj.nominalBeziers.bv_dxcom,0:0.01:1)); 
             if obj.useIncreasingVelocity
                 dxN = 0.5;      % starting velocity
                 desiredVelocity = [dxN dxN dxN linspace(dxN,dxcom,obj.stepsToTrueDesired)];
@@ -864,17 +873,27 @@ classdef backSteppingWalking < handle
             %%%%%%%%%%% task %%%%%%%%%%%
       
             figure; 
-            subplot(2,1,1); hold on; grid on;
+            subplot(4,1,1); hold on; grid on;
             plot(t,obj.stepTimeLog,'r')
             xlabel('t'); ylabel('stepTime')
             title('stepTime during simulation')
             
-            subplot(2,1,2); hold on; grid on;
+            subplot(4,1,2); hold on; grid on;
             plot(t,obj.stepTimeVLOLog,'r')
             plot(t,q1)
             plot(t,q2)
             xlabel('t'); ylabel('stepTimeVLO')
             title('stepTimeVLO during simulation')
+            
+            subplot(4,1,3); hold on; grid on;
+            plot(t,obj.timeNormFLog)
+            xlabel('t'); ylabel('timeNormFLog')
+            title('timeNormFLog')
+            
+            subplot(4,1,4); hold on; grid on;
+            plot(t,obj.timeNormZLog)
+            xlabel('t'); ylabel('timeNormZLog')
+            title('timeNormZLog')
             
             
             figure,
@@ -941,7 +960,7 @@ classdef backSteppingWalking < handle
             plot(obj.GRFsbound(:,1),obj.GRFsbound(:,3),'c')
             plot(obj.GRFsbound(:,1),obj.GRFsbound(:,4),'g')
             plot(obj.GRFnsbound(:,1),obj.GRFnsbound(:,2),'g')
-            plot(obj.GRFnsbound(:,1),obj.GRFnsbound(:,3),'g')
+            plot(obj.GRFnsbound(:,1),obj.GRFnsbound(:,3),'c')
             plot(obj.GRFnsbound(:,1),obj.GRFnsbound(:,4),'g')
             plot(t, obj.GRFsol(1,:), 'r')
             plot(t, obj.GRFsol(2,:), 'b') 
@@ -950,42 +969,42 @@ classdef backSteppingWalking < handle
             legend('Fs', 'Fns', 'bound');
 
             %%%%%%%%%%%% leg behavior %%%%%%%%%%%%%
-            figure
-            subplot(3,2,1); hold on; grid on;
-            plot(t, sL1, 'r')
-            plot(t, sL2, 'b')
-            legend('sL1', 'sL2')
-            title('s');
-             
-            subplot(3,2,2); hold on; grid on;
-            plot(t, L1, 'r')
-            plot(t, L2, 'b')
-            title('L')
-            legend('L1', 'L2')
-
-            subplot(3,2,3); hold on; grid on;
-            plot(t, dL1, 'r')
-            plot(t, dL2, 'b')
-            title('dL')
-            legend('dL1', 'dL2')
-            
-            subplot(3,2,4); hold on; grid on;
-            plot(t, dsL1, 'r')
-            plot(t, dsL2, 'b')
-            title('ds');
-            legend('dsL1', 'dsL2');
-
-            subplot(3,2,5); hold on; grid on;
-            plot(t, obj.usol(1,:), 'r')
-            plot(t, obj.usol(2,:), 'b')
-            title('ddL')
-            legend('ddL1', 'ddL2');
-
-            subplot(3,2,6); hold on; grid on;
-            plot(t, obj.GRFsol(1,:), 'r')
-            plot(t, obj.GRFsol(2,:), 'b') 
-            title('F (N)')
-            legend('Fs', 'Fns');
+%             figure
+%             subplot(3,2,1); hold on; grid on;
+%             plot(t, sL1, 'r')
+%             plot(t, sL2, 'b')
+%             legend('sL1', 'sL2')
+%             title('s');
+%              
+%             subplot(3,2,2); hold on; grid on;
+%             plot(t, L1, 'r')
+%             plot(t, L2, 'b')
+%             title('L')
+%             legend('L1', 'L2')
+% 
+%             subplot(3,2,3); hold on; grid on;
+%             plot(t, dL1, 'r')
+%             plot(t, dL2, 'b')
+%             title('dL')
+%             legend('dL1', 'dL2')
+%             
+%             subplot(3,2,4); hold on; grid on;
+%             plot(t, dsL1, 'r')
+%             plot(t, dsL2, 'b')
+%             title('ds');
+%             legend('dsL1', 'dsL2');
+% 
+%             subplot(3,2,5); hold on; grid on;
+%             plot(t, obj.usol(1,:), 'r')
+%             plot(t, obj.usol(2,:), 'b')
+%             title('ddL')
+%             legend('ddL1', 'ddL2');
+% 
+%             subplot(3,2,6); hold on; grid on;
+%             plot(t, obj.GRFsol(1,:), 'r')
+%             plot(t, obj.GRFsol(2,:), 'b') 
+%             title('F (N)')
+%             legend('Fs', 'Fns');
             unDeformedFootPosZ1 = z - L1.*cos(q1);
             unDeformedFootVelZ1 = dz - dL1.*cos(q1) + L1.*sin(q1).*dq1;
             
@@ -1402,6 +1421,103 @@ classdef backSteppingWalking < handle
             title('time_norm')
         end
         
+        function plotComparisonToHuman(obj)
+            X = obj.Xsol;
+            t = obj.Tsol;
+            
+            x = X(:,1);     dx = X(:,2);
+            z = X(:,3);     dz = X(:,4);
+            L1 = X(:,5);    dL1 = X(:,6); %original left leg
+            L2 = X(:,7);    dL2 = X(:,8);
+            sL1 = X(:,9);   dsL1 = X(:,10);
+            sL2 = X(:,11);  dsL2 = X(:,12);
+            r1 = X(:, 13);  dr1 = X(:, 14);
+            r2 = X(:, 15);  dr2 = X(:, 16);
+            q1 = X(:, 17);  dq1 = X(:, 18);
+            q2 = X(:, 19);  dq2 = X(:, 20);
+            
+            % load and create human data
+            load('data/beziersRaw/allBeziersHuman.mat')
+            dxcom_human = []; time_human = [];
+            dzcom_human = []; 
+            xcom_human = [];
+            zcom_human = [];
+            
+            teval = linspace(0,1,100);
+            for i = {'phase1','phase2','phase3'}
+                bv_dxcom = allBeziers.(obj.exp).(i{:}).bv_dxcom;
+                dxcom_human = [dxcom_human bezier2(bv_dxcom,teval)];
+                
+                bv_dzcom = allBeziers.(obj.exp).(i{:}).bv_dzcom;
+                dzcom_human = [dzcom_human bezier2(bv_dzcom,teval)];
+                
+                bv_xcom = allBeziers.(obj.exp).(i{:}).bv_xcom;
+                xcom_human = [xcom_human bezier2(bv_xcom,teval)];
+                
+                bv_zcom = allBeziers.(obj.exp).(i{:}).bv_zcom;
+                zcom_human = [zcom_human bezier2(bv_zcom,teval)];
+                
+                tactual = linspace(0,allBeziers.(obj.exp).(i{:}).timeMax);
+                try
+                    tactual = tactual + time_human(end);
+                end
+                time_human = [time_human tactual];
+            end
+            lw = 3;
+            fontSize = 15;
+            
+            %%% dx, z, dz, GRF
+            figure
+            subplot(4,1,1); hold on; grid on;
+            plot(t-obj.tLastVLO,dx,'r','LineWidth',lw)
+            plot(time_human,dxcom_human,'b','LineWidth',lw)
+            legend('aSLIP','human')
+            title('t-dx');
+            set(gca,'FontSize',fontSize)
+            
+            subplot(4,1,2); hold on; grid on;
+            plot(t-obj.tLastVLO,z,'r','LineWidth',lw)
+            plot(time_human,zcom_human,'b','LineWidth',lw)
+            legend('aSLIP','human')
+            title('t-z');
+            set(gca,'FontSize',fontSize)
+            
+            subplot(4,1,3); hold on; grid on;
+            plot(t-obj.tLastVLO,dz,'r','LineWidth',lw)
+            plot(time_human,dzcom_human,'b','LineWidth',lw)
+            legend('aSLIP','human')
+            title('t-dz');
+            set(gca,'FontSize',fontSize)
+            
+            subplot(4,1,4); hold on; grid on;
+            plot(t-obj.tLastVLO, obj.GRFsol(1,:), 'b','LineWidth',lw)
+            plot(obj.GRFsbound(:,1)-obj.tLastVLO,obj.GRFsbound(:,3),'r','LineWidth',lw)
+            plot(t-obj.tLastVLO, obj.GRFsol(2,:), 'b','LineWidth',lw) 
+            plot(obj.GRFnsbound(:,1)-obj.tLastVLO,obj.GRFnsbound(:,3),'r','LineWidth',lw)
+            title('F_z (N)')
+            legend('aSLIP','human');
+            set(gca,'FontSize',fontSize)
+            
+            %%% stepsizes
+            load('data/human/Lstep_struct.mat')
+            LstepsHuman = Lstep_struct.(obj.exp).steps_mean;
+            LstepsaSLIP = obj.stepLengthSequence(obj.knownDownstepStep:obj.knownDownstepStep+3);
+            figure; hold on; grid on;
+            p = plot(1:4,LstepsaSLIP,'ro');
+            p.MarkerSize = 10;
+            p.MarkerFaceColor = 'r';
+            p = plot(1:4,LstepsHuman,'bo');
+            p.MarkerSize = 10;
+            p.MarkerFaceColor = 'b';
+            ylabel('Stepsize [m]')
+            xlim([0 5])
+            xticks([1 2 3 4])
+            xticklabels({'nominal','downstep','overstep','upstep'})
+            title(obj.exp)
+            legend('aSLIP','human')
+            set(gca,'FontSize',fontSize)
+        end
+        
         function [Wx] = calculationW(obj)
             %%% calculate w %% model error %%
             Wx = [];
@@ -1601,6 +1717,10 @@ classdef backSteppingWalking < handle
                     c = obj.c_relax_SSP;
                 end
                 
+                if obj.isDownstep
+                    c = obj.c_relax_SSP_downstep;
+                end
+                
                 hs = (c*Fsdes + deltaF)^2 - (Fs - Fsdes)^2;
                 Acbf = [2*(Fs-Fsdes)*gs, 0];
                 Bcbf = c^2*2*Fsdes*dFsdes +  2*c*deltaF*dFsdes- 2*(Fs - Fsdes)*(fs - dFsdes) + obj.beta*hs;
@@ -1777,6 +1897,10 @@ classdef backSteppingWalking < handle
                     c = obj.c_relax_DSP;
                 end
                 
+                if obj.isDownstep 
+                    c = obj.c_relax_DSP_downstep;
+                end
+                
                 hs = (c*FdesStruct.Fsdes + deltaF)^2 - (Fs - FdesStruct.Fsdes)^2;
                 Acbf_s = [2*(Fs-FdesStruct.Fsdes)*gs, 0, 0];
                 Bcbf_s = c^2*2*FdesStruct.Fsdes*FdesStruct.dFsdes + ...
@@ -1892,20 +2016,20 @@ classdef backSteppingWalking < handle
             ddz = (obj.polar.Fs*cos(obj.polar.qs) + obj.polar.Fns*cos(obj.polar.qns))/obj.m - obj.g;
             swingX = clamp(swingX, obj.terrain.x(1), obj.terrain.x(end)); 
             
-%             switch obj.downstepStep
-%                 case 2
+            switch obj.downstepStep
+%                 case 100
 %                     swingZdes = interp1(obj.swingZbehaviorOS.t, obj.swingZbehaviorOS.z, tInDomain);
 %                     swingdZdes = interp1(obj.swingZbehaviorOS.t, obj.swingZbehaviorOS.dz, tInDomain);
-%                 case 3
-%                     swingZdes = interp1(obj.swingZbehaviorUS.t, obj.swingZbehaviorUS.z, tInDomain);
-%                     swingdZdes = interp1(obj.swingZbehaviorUS.t, obj.swingZbehaviorUS.dz, tInDomain);
-%                 otherwise 
-%                     swingZdes = interp1(obj.swingZbehavior.t, obj.swingZbehavior.z, tInDomain);
-%                     swingdZdes = interp1(obj.swingZbehavior.t, obj.swingZbehavior.dz, tInDomain);
-%             end
+                case 3
+                    swingZdes = interp1(obj.swingZbehaviorUS.t, obj.swingZbehaviorUS.z, tInDomain);
+                    swingdZdes = interp1(obj.swingZbehaviorUS.t, obj.swingZbehaviorUS.dz, tInDomain);
+                otherwise 
+                    swingZdes = interp1(obj.swingZbehavior.t, obj.swingZbehavior.z, tInDomain);
+                    swingdZdes = interp1(obj.swingZbehavior.t, obj.swingZbehavior.dz, tInDomain);
+            end
             
-            swingZdes = interp1(obj.swingZbehavior.t, obj.swingZbehavior.z, tInDomain);
-            swingdZdes = interp1(obj.swingZbehavior.t, obj.swingZbehavior.dz, tInDomain);         
+%             swingZdes = interp1(obj.swingZbehavior.t, obj.swingZbehavior.z, tInDomain);
+%             swingdZdes = interp1(obj.swingZbehavior.t, obj.swingZbehavior.dz, tInDomain);         
             terrainZ = interp1(obj.terrain.x, obj.terrain.swingZfilter, swingX);
             
             slope = interp1(obj.terrain.x, obj.terrain.theta, swingX); 
@@ -1937,7 +2061,6 @@ classdef backSteppingWalking < handle
             %%%% state based- LIP inpsired step size
             %%% project to slope coordinates
             %%%%
-            
             % Either use theta from the ground, or detect it from the
             % current swing foot position. This we can only do after step 1
             % because the initial condition might screw up the first time
@@ -1952,10 +2075,9 @@ classdef backSteppingWalking < handle
                 end
             else
                 if obj.useSwingFootDetection && obj.downstepStep == 1
-%                     theta = 0;
-                    theta = -2*atan( obj.knownDownstepHeight/(obj.stepLengthSequence(end)/2));
+                    theta = atan( obj.zsw2f/(obj.stepLengthSequence(end)/2));
                 elseif obj.useSwingFootDetection && obj.downstepStep == 2
-                    theta = atan(-obj.knownDownstepHeight/(obj.stepLengthSequence(end-1)/2));
+                    theta = atan(-obj.downstepHeightDetected/(obj.stepLengthSequence(end-1)/2));
                 else
                     theta = 0;
                 end
@@ -1963,11 +2085,18 @@ classdef backSteppingWalking < handle
             obj.LIP.theta = theta;        
             tliftOff = obj.TimeStamp(end);
 
+            
+            
             tNow = t - tliftOff;
             if isfield(obj.polar,'Fs')
                 obj.LIP.LIPacc = (obj.polar.Fs*sin(obj.polar.qs) + obj.polar.Fns*sin(obj.polar.qns))/obj.m;
             end
+            
+            x2f = x2f*cos(theta);
+            dx = dx*cos(theta);
+            
             [obj.stepLdes, obj.dstepLdes] = obj.LIP.LIPbasedController(t, x, x2f, dx, obj.TS - tNow);
+            obj.stepLdesOriginalLog = [obj.stepLdesOriginalLog; obj.stepLdes];
             
             %%% smoothing from the current swing foot position
             stepLengthPre = - obj.stepLengthSequence(end);
@@ -1980,19 +2109,29 @@ classdef backSteppingWalking < handle
             
             %% offsets
             % human
-            %   exp25: [0.68, Inf]
-            %   exp50: [0.67, 0.75]
-            %   exp75: [0.665, 0.75]
-            %   exp100: [
-            %   unexp25: 0.68
-            %   unexp50:
-            %   unexp75:
-            %   unexp100:
+            %   exp25: [0.71, 0.75]
+            %   exp50: [0.71, 0.75]
+            %   exp75: [0.71, 0.75]
+            %   exp100: [0.71, 0.75] (with c = 0.40)
+            %   unexp25: [0.71 0.75]
+            %   unexp50: [0.71 0.75]
+            %   unexp75: [0.71 0.75]
+            %   unexp100: [0.71 0.75]
+            
+            % cassie
+            %   exp25: [0.71, 0.75]
+            %   exp50: 
+            %   exp75: 
+            %   exp100: 
+            %   unexp25: 
+            %   unexp50: 
+            %   unexp75: 
+            %   unexp100: 
             
             if obj.downstepStep == 1
-                obj.maxStepsize = 0.71;
+                obj.maxStepsize = Inf; %0.75; 
             elseif obj.downstepStep == 2
-                obj.maxStepsize = 0.75;
+                obj.maxStepsize = Inf;
             else
                 obj.maxStepsize = Inf;
             end
@@ -2128,9 +2267,7 @@ classdef backSteppingWalking < handle
                     case 2
                         phase = 'phase2';
                         h = obj.knownDownstepHeight;
-                        % as we know the splines from VLO to end of
-                        % DSP, the phase considered here slightly is
-                        % shifted (linearly) by 42%
+                        
                         if obj.stepTime > obj.TS
                             t_norm = 1;
                         else
@@ -2336,7 +2473,7 @@ classdef backSteppingWalking < handle
                         phase = 'phase1';
                         h = obj.downstepHeightDetected;
                         % DSP: Normalize time for bezier, DSP from 0 to 1
-                        TDdownstep = obj.TD/2;
+                        TDdownstep = obj.TD;
                         if ~passedDSP1 
                             % should be Bezier with $h$ 
                             DSP1min = obj.stepTime;

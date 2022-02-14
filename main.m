@@ -10,10 +10,10 @@ addpath('results')
 addpath('Third')
 
 %% flat
-% cassie expected:   y
-% cassie unexpected: y
+system = 'Human';
+exp = 'unexp100';
 
-test = backSteppingWalking('Human');
+test = backSteppingWalking(system,exp);
 % test.genDesiredbehaviorFlat;
 test.genDesiredbehaviorUnexpDownstep(0.10);
 test.expectedDownstep = false;
@@ -34,8 +34,10 @@ test.setVelocityFromBezier();
 % set vertical position from splines
 test.useHumanZ = true;
 test.useHumanF = true;
-test.c_relax_SSP = 0.30; %0.30
-test.c_relax_DSP = 0.30; %0.30
+test.c_relax_SSP = 0.5; %0.30
+test.c_relax_DSP = 0.5; %0.30
+test.c_relax_SSP_downstep = 0.5;
+test.c_relax_DSP_downstep = 0.5;
 
 % run
 test.setDuration(8); 
@@ -47,9 +49,9 @@ timenow = datestr(now,30);
 test.plotLIP;
 
 %%
-logData = false;
+logData = true;
 if logData
     log = struct(test);
     folderName = 'results/';
-    save([folderName,'flat', timenow,'.mat'], 'log');
+    save([folderName,exp,system,'.mat'], 'log');
 end
