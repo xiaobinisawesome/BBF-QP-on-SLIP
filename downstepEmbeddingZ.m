@@ -2,7 +2,7 @@ clear all; close all; clc;
 addpath('functions/')
 
 %% Load data
-system = 'Human';
+system = 'Cassie';
 load(strcat('data/beziersRaw/allBeziers',system,'.mat'))
 ab = allBeziers;
 

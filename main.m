@@ -10,7 +10,7 @@ addpath('results')
 addpath('Third')
 
 %% flat
-system = 'Human';
+system = 'Cassie';
 exp = 'unexp100';
 
 test = backSteppingWalking(system,exp);
@@ -20,7 +20,7 @@ test.expectedDownstep = false;
 
 % add LIP model
 test.LIP.initializeLIP();
-test.maxStepsize = Inf;
+test.maxStepsize = Inf; % exp: 0.80;
 % set the forward velocity
 test.useIncreasingVelocity   = true;
 test.useIncreasingDeviation  = true;
@@ -34,13 +34,13 @@ test.setVelocityFromBezier();
 % set vertical position from splines
 test.useHumanZ = true;
 test.useHumanF = true;
-test.c_relax_SSP = 0.5; %0.30
-test.c_relax_DSP = 0.5; %0.30
-test.c_relax_SSP_downstep = 0.5;
-test.c_relax_DSP_downstep = 0.5;
+test.c_relax_SSP = 0.35; %0.35
+test.c_relax_DSP = 0.35; %0.35
+test.c_relax_SSP_downstep = 0.35; %0.35
+test.c_relax_DSP_downstep = 0.35; %0.35
 
 % run
-test.setDuration(8); 
+test.setDuration(10); 
 test.simBackStepping;
 % plot
 test.plot;
@@ -49,7 +49,7 @@ timenow = datestr(now,30);
 test.plotLIP;
 
 %%
-logData = true;
+logData = false;
 if logData
     log = struct(test);
     folderName = 'results/';

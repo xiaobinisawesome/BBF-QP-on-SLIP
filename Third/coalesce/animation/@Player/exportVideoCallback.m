@@ -27,7 +27,8 @@ function exportVideoCallback(this, varargin)
         set(this.handles.fig, 'KeyPressFcn', '');
 
         % Construct video writer object
-        this.videoWriter = VideoWriter([pathName, fileName], this.options.video.format);
+%         this.videoWriter = VideoWriter([pathName, fileName], this.options.video.format);
+        this.videoWriter = VideoWriter([pathName, fileName], 'Motion JPEG AVI');
         this.videoWriter.FrameRate = this.options.video.frameRate;
         try
             this.videoWriter.Quality = this.options.video.quality;

@@ -75,6 +75,9 @@ classdef backSteppingWalking < handle
         bv_SSP3 = struct();     % just for zcom and dzcom of SSP3
         zdesPrev = struct;
         FdesPrev = struct;
+        FdesPre = [0; 0];
+        dFdesPre = [0; 0];
+        timePre = 0.0;
         
         %%% small D requires large leg length actuation; 
         %%% large D has large impact force, challenges the DSP
@@ -112,6 +115,7 @@ classdef backSteppingWalking < handle
         zcomDownstepLog = [];
         zswLog = [];
         zsw2fLog = [];
+        xsw2fLog = [];
         qsLog = [];
         
         stepLdesOriginalLog = [];
@@ -148,18 +152,18 @@ classdef backSteppingWalking < handle
     properties  %% control
          %%% linear controller gain
         Kp = 10; %10 %%%% PD gains for leg length control
-        Kd = 5; %10
-        epsilon = .1; % 0.1;
+        Kd = 5; %5
+        epsilon = 0.2; % 0.1;
         c_relax_DSP = 0.15; %0.3; %%% DSP, stance force relax coef
         c_relax_SSP = 0.15;
-        c_relax_DSP_downstep = 0.5;
-        c_relax_SSP_downstep = 0.5;
-        deltaF = 50; % 10, 20 (was 50)
-        Kbackstepping = 100; 
-        gama = 10; % was 10 %%% clf : dV< -gama*V; 
+        c_relax_DSP_downstep = 0.15;
+        c_relax_SSP_downstep = 0.15;
+        deltaF = 50; % was 50
+        Kbackstepping = 100; % was 100
+        gamma = 10; % was 10 %%% clf : dV< -gamma*V; 
         beta = 500 % was 500 %%% CBF: dh > - beta*(h- Fmin) with h = Fs in SSP; %% larger 
-        Fmin = 20; 
-        ddLmax = 500
+        Fmin = 20;
+        ddLmax = Inf; % was 500
         
         Fext = 0 %%% external push force
         LIP
@@ -217,7 +221,7 @@ classdef backSteppingWalking < handle
                 obj.KparamSim = obj.Kparam;
                 obj.DparamSim = obj.Dparam;
 
-                obj.deltaNominal = (0.9361-0.8189);
+                obj.deltaNominal = (0.9361-0.8189) + (0.7669-0.7564);
                 obj.deltaDownstep = 0;
 %                 obj.deltaDownstep = 0.8824 - 0.8557 - (0.8936 - 0.8824);
             end
@@ -244,10 +248,10 @@ classdef backSteppingWalking < handle
         function setVelocityFromBezier(obj)
             % we walk a bit slower in order to have xcom less affected by
             % the actuation on z
-            dxcom = 1.0*mean(bezier2(obj.nominalBeziers.bv_dxcom,0:0.01:1)); 
+            dxcom = 0.9*mean(bezier2(obj.nominalBeziers.bv_dxcom,0:0.01:1)); 
             if obj.useIncreasingVelocity
                 dxN = 0.5;      % starting velocity
-                desiredVelocity = [dxN dxN dxN linspace(dxN,dxcom,obj.stepsToTrueDesired)];
+                desiredVelocity = [dxN dxN linspace(dxN,dxcom,obj.stepsToTrueDesired)];
                 % get the proper index of the factors, either within
                 % the range or at the end (actual desired)
                 index = length(desiredVelocity);
@@ -451,6 +455,7 @@ classdef backSteppingWalking < handle
                 obj.stepTimeVLOLog = [obj.stepTimeVLOLog; obj.stepTimeVLO];
                 obj.zswLog = [obj.zswLog; obj.zsw];
                 obj.zsw2fLog = [obj.zsw2fLog; obj.zsw2f];
+                obj.xsw2fLog = [obj.xsw2fLog; obj.xsw2f];
                 obj.qsLog = [obj.qsLog; obj.polar.qs];
                 
                 if obj.polar.x > obj.terrain.x(end) - 0.3
@@ -471,6 +476,9 @@ classdef backSteppingWalking < handle
                 obj.stanceFootZ = obj.polar.z - obj.polar.rns*cos(obj.polar.qns);
                 obj.stepLengthSequence = [obj.stepLengthSequence, obj.curstepLength];
                 obj.GRFboundIdx = [obj.GRFboundIdx, length(obj.GRFsbound)]; 
+                
+                obj.FdesPre = [0; 0];
+                obj.timePre = 0.0;
             else %%% next domain is DSP
                 %%%% preimpact event 
                 %obj.LIP.MPC_controller('MPCtrackingVelocityP1', ts, [obj.polar.x2f;obj.polar.dx])%%% MPC on LIP 
@@ -479,6 +487,9 @@ classdef backSteppingWalking < handle
                 obj.logDiscreteState(ts); 
                 X0 = obj.virtualImpactEvent(X0, obj.curstepLength);
                 obj.FliftOff = obj.polar.Fs; 
+                
+                obj.FdesPre = [obj.FdesPre(1); 0];
+                obj.timePre = 0.0;
             end
         end
         
@@ -1697,11 +1708,11 @@ classdef backSteppingWalking < handle
             dVeta = partial_V_eta*deta; 
             %%%% Vdot := LvF + LvG*u = dVeta + pz*z*dz 
             %%%% dz = dFs - dFbar_fbIO = f2 + g2*u - dFbar_fbIO; 
-            %%%% dV < -gama*V + delta; LvF + LvG*u <  -gama*V + delta;  Aclf*u < bclf
+            %%%% dV < -gamma*V + delta; LvF + LvG*u <  -gamma*V + delta;  Aclf*u < bclf
             LvF = dVeta + pz*z*(fs - dFbar_fbIO); 
             LvG = pz*z*gs; 
             Aclf =  [LvG, -1e+3];
-            Bclf = -obj.gama*V - LvF; 
+            Bclf = -obj.gamma*V - LvF; 
             
             %%%%%%%%%%%%%%%%%%%% CBF constraint construction %%%%%%%%%%%%
             deltaF = obj.deltaF;
@@ -1874,13 +1885,13 @@ classdef backSteppingWalking < handle
             dVeta = partial_V_eta*deta; 
             %%%% Vdot := LvF + LvG*u_sum = dVeta + pz*z*dz 
             %%%% dz = dFsum - dFsumbar_fbIO = f_sum + g_sum*u_sum - dFsumbar_fbIO; 
-            %%%% dV < -gama*V + delta; LvF + LvG*u_sum <  -gama*V + delta;  Aclf*u < bclf
+            %%%% dV < -gamma*V + delta; LvF + LvG*u_sum <  -gamma*V + delta;  Aclf*u < bclf
             %%%% u_sum = cos(qs)*gs*us + cos(qns)*gns*uns
 
             LvF = dVeta + pz*z*(f_sum - dFsumbar_fbIO); 
             LvG = pz*z*g_sum; 
             Aclf =  [LvG*cos(qs)*gs, LvG*cos(qns)*gns, -1e+3];
-            Bclf = -obj.gama*V - LvF; 
+            Bclf = -obj.gamma*V - LvF; 
             
             
             %%%%%%%%%%%%%%%%%%%% CBF constraint construction %%%%%%%%%%%%
@@ -2069,15 +2080,15 @@ classdef backSteppingWalking < handle
                 if obj.stepCnt == obj.knownDownstepStep
                     theta = atan( obj.knownDownstepHeight/(obj.stepLengthSequence(end)/2));
                 elseif obj.stepCnt == obj.knownDownstepStep + 1
-                    theta = atan( -obj.knownDownstepHeight/(obj.stepLengthSequence(end-1)/2));
+                    theta = 0; %atan( -obj.knownDownstepHeight/(obj.stepLengthSequence(end-1)/2));
                 else
                     theta = 0;
                 end
             else
-                if obj.useSwingFootDetection && obj.downstepStep == 1
+                if obj.downstepStep == 1
                     theta = atan( obj.zsw2f/(obj.stepLengthSequence(end)/2));
-                elseif obj.useSwingFootDetection && obj.downstepStep == 2
-                    theta = atan(-obj.downstepHeightDetected/(obj.stepLengthSequence(end-1)/2));
+                elseif obj.downstepStep == 2
+                    theta = 0; %atan(-obj.downstepHeightDetected/(obj.stepLengthSequence(end-1)/2));
                 else
                     theta = 0;
                 end
@@ -2129,7 +2140,7 @@ classdef backSteppingWalking < handle
             %   unexp100: 
             
             if obj.downstepStep == 1
-                obj.maxStepsize = Inf; %0.75; 
+                obj.maxStepsize = 0.45; %0.75; 
             elseif obj.downstepStep == 2
                 obj.maxStepsize = Inf;
             else
@@ -2193,6 +2204,16 @@ classdef backSteppingWalking < handle
             else
                 [Fdes, dFdes] = getDesiredFNominal(obj,t);
             end
+            % save Fdes for derivative for next iteration
+            updatePre(obj,t,Fdes);
+        end
+        function obj = updatePre(obj,t,Fdes)
+            if obj.NcontactLegs == 2
+                obj.FdesPre = Fdes;
+            else
+                obj.FdesPre = [Fdes;0];
+            end
+            obj.timePre = t;
         end
         
         function [Fdes, dFdes] = getDesiredFNominal(obj,t)
@@ -2304,6 +2325,7 @@ classdef backSteppingWalking < handle
                         Fdes = obj.mFrac*bezier2(bv_grf_SSP,t_norm_VLO);
                         dFdes = obj.mFrac*bezier2(bv_grf_SSP,t_norm,1)/(obj.TD);
                 end
+                dFdes = (Fdes - obj.FdesPre(1))/(t - obj.timePre);
             else % DSP
                 switch obj.downstepStep
                     case 1
@@ -2338,7 +2360,6 @@ classdef backSteppingWalking < handle
                         Fdes(2) = obj.mFrac*bezier2(bv_grf_DSP_st,t_norm);
                         dFdes(1) = obj.mFrac*bezier2(bv_grf_DSP_sw,t_norm,1)/(obj.TD);
                         dFdes(2) = obj.mFrac*bezier2(bv_grf_DSP_st,t_norm,1)/(obj.TD);
-                        return;
                     case 2
                         phase = 'phase2';
                         h = obj.knownDownstepHeight;
@@ -2370,7 +2391,6 @@ classdef backSteppingWalking < handle
                         Fdes(2) = obj.mFrac*bezier2(bv_grf_DSP_st,t_norm);
                         dFdes(1) = obj.mFrac*bezier2(bv_grf_DSP_sw,t_norm,1)/(obj.TD);
                         dFdes(2) = obj.mFrac*bezier2(bv_grf_DSP_st,t_norm,1)/(obj.TD);
-                        return;
                     case 3
                         % THERE SHOULD NOT OCCUR A DSP PHASE 3
                         % DSP: Normalize time for bezier, DSP from 0 to 1
@@ -2385,8 +2405,8 @@ classdef backSteppingWalking < handle
                         Fdes(2) = bezier2(obj.nominalBeziers.bv_grf_DSP_st,t_norm);
                         dFdes(1) = bezier2(obj.nominalBeziers.bv_dgrf_DSP_sw,t_norm);
                         dFdes(2) = bezier2(obj.nominalBeziers.bv_dgrf_DSP_st,t_norm);
-                        return;
                 end
+                dFdes = (Fdes - obj.FdesPre)./(t - obj.timePre);
             end
         end
         function [Fdes, dFdes] = getDesiredFUnexpected(obj,t)
@@ -2416,10 +2436,10 @@ classdef backSteppingWalking < handle
                         t_norm_VLO = (t_norm - 0.50)/(1.00 - 0.50);
                         obj.timeNormFLog = [obj.timeNormFLog; t_norm_VLO];
 
-                        n = length(obj.downstepBeziersF.exp.phase1.grf_SSP);
+                        n = length(obj.downstepBeziersF.unexp.phase1.grf_SSP);
                         bv_grf_SSP = zeros(1,n);
                         for i = 1:n
-                            bv_grf_SSP(i) = polyval(obj.downstepBeziersF.exp.phase1.grf_SSP{i},h);
+                            bv_grf_SSP(i) = polyval(obj.downstepBeziersF.unexp.phase1.grf_SSP{i},h);
                         end
 %                         Fdes = obj.mFrac*bezier2(bv_grf_SSP,t_norm_VLO);
                         Fdes = bezier2(obj.nominalBeziers.bv_grf_SSP,1);
@@ -2438,10 +2458,10 @@ classdef backSteppingWalking < handle
                         end
                         obj.timeNormFLog = [obj.timeNormFLog; t_norm];
 
-                        n = length(obj.downstepBeziersF.exp.phase2.grf_SSP);
+                        n = length(obj.downstepBeziersF.unexp.phase2.grf_SSP);
                         bv_grf_SSP = zeros(1,n);
                         for i = 1:n
-                            bv_grf_SSP(i) = polyval(obj.downstepBeziersF.exp.phase2.grf_SSP{i},h);
+                            bv_grf_SSP(i) = polyval(obj.downstepBeziersF.unexp.phase2.grf_SSP{i},h);
                         end
                         Fdes = obj.mFrac*bezier2(bv_grf_SSP,t_norm);
                         dFdes = bezier2(obj.nominalBeziers.bv_dgrf_SSP,t_norm);
@@ -2459,14 +2479,15 @@ classdef backSteppingWalking < handle
                         t_norm_VLO = (t_norm - 0.0)/(0.42 - 0.0);
                         obj.timeNormFLog = [obj.timeNormFLog; t_norm_VLO];
 
-                        n = length(obj.downstepBeziersF.exp.phase3.grf_SSP);
+                        n = length(obj.downstepBeziersF.unexp.phase3.grf_SSP);
                         bv_grf_SSP = zeros(1,n);
                         for i = 1:n
-                            bv_grf_SSP(i) = polyval(obj.downstepBeziersF.exp.phase3.grf_SSP{i},h);
+                            bv_grf_SSP(i) = polyval(obj.downstepBeziersF.unexp.phase3.grf_SSP{i},h);
                         end
                         Fdes = obj.mFrac*bezier2(bv_grf_SSP,t_norm_VLO);
                         dFdes = obj.mFrac*bezier2(obj.nominalBeziers.bv_dgrf_SSP,t_norm);
                 end
+                dFdes = (Fdes - obj.FdesPre(1))/(t - obj.timePre);
             else % DSP
                 switch obj.downstepStep
                     case 1
@@ -2485,15 +2506,15 @@ classdef backSteppingWalking < handle
                         obj.timeNormFLog = [obj.timeNormFLog; t_norm];
 
                         % eval beziers
-                        n = length(obj.downstepBeziersF.exp.phase1.grf_DSP_sw);
+                        n = length(obj.downstepBeziersF.unexp.phase1.grf_DSP_sw);
                         bv_grf_DSP_sw = zeros(1,n);
                         for i = 1:n
-                            bv_grf_DSP_sw(i) = polyval(obj.downstepBeziersF.exp.phase1.grf_DSP_sw{i},h);
+                            bv_grf_DSP_sw(i) = polyval(obj.downstepBeziersF.unexp.phase1.grf_DSP_sw{i},h);
                         end
-                        n = length(obj.downstepBeziersF.exp.phase1.grf_DSP_st);
+                        n = length(obj.downstepBeziersF.unexp.phase1.grf_DSP_st);
                         bv_grf_DSP_st = zeros(1,n);
                         for i = 1:n
-                            bv_grf_DSP_st(i) = polyval(obj.downstepBeziersF.exp.phase1.grf_DSP_st{i},h);
+                            bv_grf_DSP_st(i) = polyval(obj.downstepBeziersF.unexp.phase1.grf_DSP_st{i},h);
                         end
 
                         Fdes = zeros(2,1);
@@ -2502,7 +2523,6 @@ classdef backSteppingWalking < handle
                         Fdes(2) = obj.mFrac*bezier2(bv_grf_DSP_st,t_norm);
                         dFdes(1) = obj.mFrac*bezier2(obj.nominalBeziers.bv_dgrf_DSP_sw,t_norm);
                         dFdes(2) = obj.mFrac*bezier2(obj.nominalBeziers.bv_dgrf_DSP_st,t_norm);
-                        return;
                     case 2
                         phase = 'phase2';
                         h = obj.downstepHeightDetected;
@@ -2519,19 +2539,19 @@ classdef backSteppingWalking < handle
 
                         Fdes = zeros(2,1);
                         dFdes = zeros(2,1);
-                        n = length(obj.downstepBeziersF.exp.phase2.grf_DSP_sw);
+                        n = length(obj.downstepBeziersF.unexp.phase2.grf_DSP_sw);
                         bv_grf_DSP_st = zeros(1,n);
                         bv_grf_DSP_sw = zeros(1,n);
                         for i = 1:n
-                            bv_grf_DSP_st(i) = polyval(obj.downstepBeziersF.exp.phase2.grf_DSP_st{i},h);
-                            bv_grf_DSP_sw(i) = polyval(obj.downstepBeziersF.exp.phase2.grf_DSP_sw{i},h);
+                            bv_grf_DSP_st(i) = polyval(obj.downstepBeziersF.unexp.phase2.grf_DSP_st{i},h);
+                            bv_grf_DSP_sw(i) = polyval(obj.downstepBeziersF.unexp.phase2.grf_DSP_sw{i},h);
                         end
                         Fdes(1) = obj.mFrac*bezier2(bv_grf_DSP_sw,t_norm);
                         Fdes(2) = obj.mFrac*bezier2(bv_grf_DSP_st,t_norm);
                         dFdes(1) = obj.mFrac*bezier2(obj.nominalBeziers.bv_dgrf_DSP_sw,t_norm);
                         dFdes(2) = obj.mFrac*bezier2(obj.nominalBeziers.bv_dgrf_DSP_st,t_norm);
-                        return;
                 end
+                dFdes = (Fdes - obj.FdesPre)./(t - obj.timePre);
             end
         end
         function [Fdes, dFdes] = getDesiredFUnexpectedAsExpected(obj,t)
@@ -3283,6 +3303,11 @@ classdef backSteppingWalking < handle
             swingZvel = bezier2(bv_zsw,teval,1);
             
             obj.swingZbehaviorUS = struct('t',teval,'z',swingZpos,'dz',swingZvel);
+            
+            swingZbehavior.NS = obj.swingZbehavior;
+            swingZbehavior.OS = obj.swingZbehaviorOS;
+            swingZbehavior.US = obj.swingZbehaviorUS;
+            save('data/outputs/swingZbehavior.mat','swingZbehavior')
         end
         
         %%%%%%%%%%%%%% xcom phasing stuff

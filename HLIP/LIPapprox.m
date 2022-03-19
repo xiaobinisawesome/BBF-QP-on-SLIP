@@ -674,13 +674,13 @@ classdef LIPapprox < handle
             dstepLength = 0 ; %%% not too much use for aSLIP walking
             switch obj.gaitType 
                 case 'P1'
-%                     obj.Xdes(1) = obj.vxdes/obj.sigma1 + obj.z*sin(theta);
+                    obj.Xdes(1) = obj.vxdes/obj.sigma1 + obj.z*sin(theta);
 %                     [1 0]*((obj.Ahat0 - eye(2))*obj.Xdes)
                     S = transpose((obj.Ahat0 - eye(2))*obj.Xdes)*[1;0]/obj.Bhat0(1);
                      %%%% in the form for feedback gain*error
                     K = obj.Kdeadbeat; 
                     stepLength = K*(xnow - obj.Xdes) - S;
-                   % stepLength = stepLength*cos(theta); 
+                   stepLength = stepLength*cos(theta); 
                    % stepLength = K*(xnow - obj.XLIP) + obj.targetStepLength;
                     obj.targetStepLength = K*(obj.XLIP - obj.Xdes) - S;
                 case 'P2'

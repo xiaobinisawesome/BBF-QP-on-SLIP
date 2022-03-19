@@ -186,7 +186,8 @@ classdef terrainGen < handle
         end
         
         function obj = genUnexpDownstep(obj, downstep)
-            downstepCenter = 7.0; % unexpected: 5.0
+%             downstepCenter = 5.2; % Human
+            downstepCenter = 5.0; % Cassie
             downstepLength = 0.5;
             
             obj.reset;
@@ -216,7 +217,7 @@ classdef terrainGen < handle
         end
         
         function obj = genFlat(obj) 
-            obj.x = -1:obj.unit:30;
+            obj.x = -1:obj.unit:10;
             obj.z = zeros(size(obj.x)); 
             obj.theta = obj.z*0; 
             obj.zfilter = obj.z;
