@@ -521,7 +521,7 @@ save('data/beziers/nominalBeziersHumanAsDownstep.mat','nominalBeziersHumanAsDown
 %% Scaling parameters
 g = 9.81;
 
-delta = 1 - (0.25/(xcom_human(end) - xcom_human(1)));
+delta = 1 - (0.35/(xcom_human(end) - xcom_human(1)));
 L_human = sqrt(zcom_human.^2 + (delta*xcom_human).^2);
 dL_human = (delta^2*xcom_human.*dxcom_human + zcom_human.*dzcom_human)./L_human;
 ddL_human = (2*delta^2*xcom_human.*ddxcom_human + 2*delta^2.*dxcom_human.^2 + 2*zcom_human.*ddzcom_human + 2*dzcom_human.^2)./(2*L_human) - ...
@@ -533,7 +533,7 @@ ddth_human = 1./(L_human.^2).*delta.*(xcom_human.*zcom_human.*(2*delta^2*dxcom_h
                                       delta^2*xcom_human.^2.*(zcom_human.*ddxcom_human + 2.*dxcom_human.*dzcom_human) + ...
                                       delta^2.*xcom_human.^3.*ddzcom_human + zcom_human.^2.*(2.*dxcom_human.*dzcom_human - zcom_human.*ddxcom_human));
 
-L_scaling = 0.90;
+L_scaling = 0.9;
 L_cassie = L_human*L_scaling;
 dL_cassie = dL_human*L_scaling;
 ddL_cassie = ddL_human*L_scaling;
@@ -559,16 +559,27 @@ x_scaling = (xcom_cassie(end)-xcom_cassie(1))/(xcom_human(end) - xcom_human(1));
 % dzcom_cassie = dzcom_cassie*x_scaling;
 % ddzcom_cassie = ddzcom_cassie*x_scaling;
 
+fs = 20;
+lw = 4;
+
 figure; 
-subplot(1,3,1); hold on; grid on;
-plot(xcom_human,zcom_human)
-plot(xcom_cassie,zcom_cassie)
-subplot(1,3,2); hold on; grid on;
-plot(dxcom_human,dzcom_human)
-plot(dxcom_cassie,dzcom_cassie)
-subplot(1,3,3); hold on; grid on;
-plot(ddxcom_human,ddzcom_human)
-plot(ddxcom_cassie,ddzcom_cassie)
+subplot(1,2,1); hold on; grid on; box on;
+plot(xcom_human,zcom_human,'b','LineWidth',lw)
+plot(xcom_cassie,zcom_cassie+0.025,'r','LineWidth',lw)
+xlabel('$x_{CoM}$','interpreter','latex')
+ylabel('$z_{CoM}$','interpreter','latex')
+xlim([-0.6 0.6])
+set(gca,'FontSize',fs)
+
+
+subplot(1,2,2); hold on; grid on; box on;
+plot(dxcom_human,dzcom_human,'b','LineWidth',lw)
+plot(dxcom_cassie,dzcom_cassie,'r','LineWidth',lw)
+xlabel('$\dot{x}_{CoM}$','interpreter','latex')
+ylabel('$\dot{z}_{CoM}$','interpreter','latex')
+legend('Human','Cassie')
+set(gca,'FontSize',fs)
+
 
 % reduce by 0.10 due to foot roll
 stepLength_human = xcom_human(end) - xcom_human(1);
@@ -578,6 +589,17 @@ stepLength_human = xcom_human(end) - xcom_human(1);
 Ts_scaling = ( sqrt(mean(L_cassie)/g) )/( sqrt(mean(L_human)/g) );
 Ts_human = time_human(end)-time_human(1);
 Ts_cassie = Ts_scaling*Ts_human;
+
+TSSP_human = nominalBeziers.timeMax_SSP;
+TSSP_cassie = Ts_scaling*TSSP_human;
+TDSP_human = nominalBeziers.timeMax - TSSP_human;
+TDSP_cassie = Ts_scaling*(TDSP_human - 0.02);
+
+Ts_human  = TSSP_human  + TDSP_human;
+Ts_cassie = TSSP_cassie + TDSP_cassie;
+
+HLIP_vxd = (xcom_cassie(end)-xcom_cassie(1))/Ts_cassie
+
 
 HLIP_vxd = 0.8;
 stepLength_cassie = HLIP_vxd*Ts_cassie;

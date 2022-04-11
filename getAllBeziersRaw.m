@@ -18,10 +18,10 @@ figure(101); hold on; grid on;
 for i = 1:length(exps)
     [allDataHuman,allDataCassie] = orderHumanData(exps{i},stepHeights(i),allDataHuman,allDataCassie);
 end
-allData = allDataHuman;
-save('data/beziersRaw/allDataHuman.mat','allData')
-allData = allDataCassie;
-save('data/beziersRaw/allDataCassie.mat','allData')
+% allData = allDataHuman;
+% save('data/beziersRaw/allDataHuman.mat','allData')
+% allData = allDataCassie;
+% save('data/beziersRaw/allDataCassie.mat','allData')
 
 plotHumanAndCassie(allDataHuman,allDataCassie)
 
@@ -35,10 +35,10 @@ allBeziersCassie = struct;
     delta2 = 0.0;
     allBeziersCassie = fitDataToBezier(allDataCassie,allBeziersCassie,delta2);
 
-allBeziers = allBeziersHuman;
-save('data/beziersRaw/allBeziersHuman.mat','allBeziers')
-allBeziers = allBeziersCassie;
-save('data/beziersRaw/allBeziersCassie.mat','allBeziers')
+% allBeziers = allBeziersHuman;
+% save('data/beziersRaw/allBeziersHuman.mat','allBeziers')
+% allBeziers = allBeziersCassie;
+% save('data/beziersRaw/allBeziersCassie.mat','allBeziers')
 
 %% FUNCTIONS
 function allBeziers = fitDataToBezier(allData,allBeziers,delta2)
@@ -543,7 +543,7 @@ for i = 1:3
                                           delta^2.*xcom_human.^3.*ddzcom_human + zcom_human.^2.*(2.*dxcom_human.*dzcom_human - zcom_human.*ddxcom_human));
 
     
-    L_scaling = 1.05;
+    L_scaling = 0.9; % was 1.05 somehow
     L_cassie = L_human*L_scaling;
     dL_cassie = dL_human*L_scaling;
     ddL_cassie = ddL_human*L_scaling;

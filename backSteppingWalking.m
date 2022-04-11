@@ -153,7 +153,7 @@ classdef backSteppingWalking < handle
          %%% linear controller gain
         Kp = 10; %10 %%%% PD gains for leg length control
         Kd = 5; %5
-        epsilon = 0.2; % 0.1;
+        epsilon = 0.1; % 0.1;
         c_relax_DSP = 0.15; %0.3; %%% DSP, stance force relax coef
         c_relax_SSP = 0.15;
         c_relax_DSP_downstep = 0.15;
@@ -2139,13 +2139,13 @@ classdef backSteppingWalking < handle
             %   unexp75: 
             %   unexp100: 
             
-            if obj.downstepStep == 1
-                obj.maxStepsize = 0.45; %0.75; 
-            elseif obj.downstepStep == 2
-                obj.maxStepsize = Inf;
-            else
-                obj.maxStepsize = Inf;
-            end
+%             if obj.downstepStep == 1
+%                 obj.maxStepsize = 0.45; % for human unexpected 
+%             elseif obj.downstepStep == 2
+%                 obj.maxStepsize = Inf;
+%             else
+%                 obj.maxStepsize = Inf;
+%             end
             stepL = clamp(stepL,-obj.maxStepsize,obj.maxStepsize);
         end
     end 

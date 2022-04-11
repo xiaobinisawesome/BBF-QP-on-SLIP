@@ -10,13 +10,13 @@ addpath('results')
 addpath('Third')
 
 %% flat
-system = 'Cassie';
-exp = 'unexp100';
+system = 'Human';
+exp = 'exp100';
 
 test = backSteppingWalking(system,exp);
 % test.genDesiredbehaviorFlat;
 test.genDesiredbehaviorUnexpDownstep(0.10);
-test.expectedDownstep = false;
+test.expectedDownstep = true;
 
 % add LIP model
 test.LIP.initializeLIP();
